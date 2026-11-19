@@ -78,8 +78,8 @@ From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md); notes
 Separately, repro/sciml_checkpoint_resolve.jl shows that SciMLSensitivity's checkpointed InterpolatingAdjoint
 re-solves each checkpoint interval adaptively, ignoring a fixed dt, so its error has a floor set by the re-solve's
 tolerances (the adjoint defaults, abstol = 1e-6 and reltol = 1e-3) rather than by the step. With one checkpoint
-interval (only the end state saved) the error stalls at the defaults (1.5, 0.78 and 0.72 % at 1e2, 1e3 and 1e4 steps,
-against 1.0, 0.099 and 0.0099 % without checkpointing), and with abstol = 1e-12 and reltol = 1e-10 it is first order
-again (0.75, 0.075, 0.0077 %). Same root cause as SciMLSensitivity#1705, where fixed-step-only methods raise an
-error; with ImplicitEuler nothing warns. With checkpoints at isqrt(steps) times, as in the CI sweep, the effect is
-small.
+interval (saveat = [T], so the only checkpoints are the start and the end) the error stalls at the defaults (1.5,
+0.78 and 0.72 % at 1e2, 1e3 and 1e4 steps, against 1.0, 0.099 and 0.0099 % without checkpointing), and with abstol =
+1e-12 and reltol = 1e-10 (passed to solve) it is first order again (0.75, 0.075, 0.0077 %). Same root cause as
+SciMLSensitivity#1705, where fixed-step-only methods raise an error; with ImplicitEuler nothing warns. With
+checkpoints at isqrt(steps) times, as in the CI sweep, the effect is small.

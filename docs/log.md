@@ -71,12 +71,13 @@
   step count for checkpointed runs too, and state the collector setting.
 - repro/sciml_checkpoint_resolve.jl now also runs at abstol = 1e-12, reltol = 1e-10: the checkpointed
   InterpolatingAdjoint is then first order (0.75, 0.075, 0.0077 % at 1e2, 1e3, 1e4 steps), so the stall at the
-  adjoint's default tolerances (abstol 1e-6, reltol 1e-3; 1.5, 0.78, 0.72 %) is the re-solve's tolerance error.
-  Tightening one tolerance is not enough here: reltol = 1e-10 alone gives 0.78, 0.11, 0.039 %, abstol = 1e-12 alone
-  1.46, 0.78, 0.71 % (probe, not in the repro). SciMLSensitivity 7.119.14, interpolating_adjoint.jl: the first
+  adjoint's default tolerances (abstol 1e-6, reltol 1e-3; 1.46, 0.78, 0.72 %) is the re-solve's tolerance error.
+  The tolerances are passed to solve, which hands them to the adjoint. Tightening one is not enough here: reltol =
+  1e-10 alone gives 0.78, 0.11, 0.039 %, abstol = 1e-12 alone 1.46, 0.78, 0.71 % (probe, not in the repro). SciMLSensitivity 7.119.14, interpolating_adjoint.jl: the first
   re-solve (lines 89-92; the only one in the repro, which has one checkpoint interval) gets the algorithm and
-  tolerances only; later re-solves add an initial dt taken from the previous re-solve; none passes adaptive = false
-  or the forward dt. Same root cause as SciMLSensitivity#1705.
-- Times for gc_timestep_frequency = 50 against Revolve without it (repro/pyadjoint_checkpoint_memory.py, this
-  laptop under load): 10 vs 14 s and 46 vs 58 s at 1000 and 4000 steps on 128 x 64; 5 vs 10 s and 21 vs 40 s on
-  32 x 16.
+  tolerances only; later re-solves add an initial dt taken from the previous re-solve; for ODEs none passes
+  adaptive = false or the forward dt (the SDE branches do re-solve on the forward grid), although the backward
+  adjoint solve itself does receive them. Same root cause as SciMLSensitivity#1705.
+- Times for Revolve without periodic collection against gc_timestep_frequency = 50
+  (repro/pyadjoint_checkpoint_memory.py, this laptop under load): 10 s against 14 s and 46 s against 58 s at 1000
+  and 4000 steps on 128 x 64; 5 s against 10 s and 21 s against 40 s on 32 x 16.
