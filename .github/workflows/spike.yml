@@ -1,0 +1,159 @@
+name: spike
+
+# mosaic#375 idea 4 on CPU runners (ubuntu-latest: 4 cores, 16 GB). One process per case; result files are named
+# <backend>-<strategy>-<nx>x<ny>-<steps>.json, and spike/run_case.py writes one even when a case is killed.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["spike/**", "backends/**", ".github/workflows/spike.yml"]
+
+concurrency:
+  group: spike-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  STEPS: "10 100 1000 10000 100000"
+
+jobs:
+  jax:
+    name: "JAX ${{ matrix.strategy }}, ${{ matrix.mesh }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        strategy: [tape, checkpoint]
+        mesh: ["32 16", "64 32", "128 64"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python "jax[cpu]==0.12.1" "numpy>=2" "scipy>=1.14"
+      - name: Sweep
+        run: |
+          set -o pipefail
+          read nx ny <<< "${{ matrix.mesh }}"
+          mkdir -p out
+          .venv/bin/python backends/jax/heat.py --nx 16 --ny 8 --steps 100 --strategy ${{ matrix.strategy }} --fd \
+            --out out/fdcheck-jax-${{ matrix.strategy }}-${nx}x${ny}.json
+          for s in $STEPS; do
+            .venv/bin/python spike/run_case.py out/jax-${{ matrix.strategy }}-${nx}x${ny}-$s.json 3600 -- \
+              .venv/bin/python backends/jax/heat.py --nx $nx --ny $ny --steps $s --strategy ${{ matrix.strategy }}
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jax-${{ matrix.strategy }}-${{ strategy.job-index }}
+          path: out/
+
+  julia:
+    name: "OrdinaryDiffEq ${{ matrix.strategy }}, ${{ matrix.mesh }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        strategy: [interp, quadrature, gauss, backsolve]
+        mesh: ["32 16", "64 32"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1.10.12"
+      - uses: julia-actions/cache@v2
+      - uses: astral-sh/setup-uv@v6
+      - run: julia --project=backends/julia -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
+      - name: Sweep
+        run: |
+          set -o pipefail
+          read nx ny <<< "${{ matrix.mesh }}"
+          mkdir -p out
+          julia --project=backends/julia backends/julia/heat.jl --nx 16 --ny 8 --steps 100 --strategy ${{ matrix.strategy }} \
+            --fd --out out/fdcheck-julia-${{ matrix.strategy }}-${nx}x${ny}.json
+          for s in $STEPS; do
+            python3 spike/run_case.py out/julia-${{ matrix.strategy }}-${nx}x${ny}-$s.json 4800 -- \
+              julia --project=backends/julia backends/julia/heat.jl --nx $nx --ny $ny --steps $s --strategy ${{ matrix.strategy }}
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: julia-${{ matrix.strategy }}-${{ strategy.job-index }}
+          path: out/
+
+  firedrake:
+    name: "Firedrake ${{ matrix.strategy }}, ${{ matrix.mesh }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    container:
+      image: firedrakeproject/firedrake-vanilla-default:2026.10.0
+      options: --user root
+    env:
+      PETSC_OPTIONS: "-options_left 0"
+      OMP_NUM_THREADS: "1"
+    strategy:
+      fail-fast: false
+      matrix:
+        strategy: [tape, checkpoint]
+        mesh: ["32 16", "64 32", "128 64"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sweep
+        shell: bash
+        run: |
+          set -o pipefail
+          apt-get update -qq && apt-get install -y -qq time > /dev/null
+          read nx ny <<< "${{ matrix.mesh }}"
+          mkdir -p out
+          python3 backends/firedrake/heat.py --nx 16 --ny 8 --steps 100 --strategy ${{ matrix.strategy }} --fd \
+            --out out/fdcheck-firedrake-${{ matrix.strategy }}-${nx}x${ny}.json
+          for s in $STEPS; do
+            python3 spike/run_case.py out/firedrake-${{ matrix.strategy }}-${nx}x${ny}-$s.json 3600 -- \
+              python3 backends/firedrake/heat.py --nx $nx --ny $ny --steps $s --strategy ${{ matrix.strategy }}
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: firedrake-${{ matrix.strategy }}-${{ strategy.job-index }}
+          path: out/
+
+  kt:
+    name: "k(T) follow-on: unrolled vs implicit Newton (JAX)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python "jax[cpu]==0.12.1" "numpy>=2" "scipy>=1.14"
+      - name: Sweep
+        run: |
+          set -o pipefail
+          mkdir -p out
+          for st in 10 50 200; do for n in 1 2 3 5; do for df in unrolled implicit; do
+            .venv/bin/python spike/run_case.py out/kt-$df-n$n-$st.json 1800 -- \
+              .venv/bin/python backends/jax/heat_kt.py --nx 16 --ny 8 --steps $st --newton $n --diff $df --reference
+          done; done; done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kt
+          path: out/
+
+  summary:
+    needs: [jax, julia, firedrake, kt]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - uses: astral-sh/setup-uv@v6
+      - name: Summarise
+        run: |
+          set -o pipefail
+          uv run --no-project --with matplotlib --with numpy python spike/summarise.py artifacts summary | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: summary
+          path: summary/
