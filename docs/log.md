@@ -65,7 +65,11 @@
     (gc_timestep_frequency=50) the growth is 5.2 and 5.8 KB/step and the Python heap grows 4.4 KB/step on both
     meshes (tracemalloc), about 0.5 GB at 1e5 steps that no setting here removes;
   - garbage from the recomputation, which grows with the mesh and waits for the cycle collector; collecting every
-    50 steps removes it at 1.3-1.4 times the time on 128 x 64 and about 2 times on 32 x 16, with the same gradient
-    to 13 digits.
+    50 steps removes it at 1.2-1.4 times the time on 128 x 64 (timings vary under load) and about 2 times on
+    32 x 16, with the same gradient to 13 digits.
   The CI sweep used the default (no periodic collection). The time-dependent benchmark should report memory against
   step count for checkpointed runs too, and state the collector setting.
+- repro/sciml_checkpoint_resolve.jl now also runs at abstol = 1e-12, reltol = 1e-10: the checkpointed
+  InterpolatingAdjoint is then first order (0.75, 0.075, 0.0077 % at 1e2, 1e3, 1e4 steps), so the stall at the
+  default tolerances (1.5, 0.78, 0.72 %) is the re-solve's tolerance error. SciMLSensitivity 7.119.14,
+  interpolating_adjoint.jl re-solves with the algorithm and tolerances only. Same root cause as SciMLSensitivity#1705.
