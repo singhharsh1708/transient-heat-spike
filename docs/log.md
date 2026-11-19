@@ -38,3 +38,9 @@
 - spike/run_case.py first killed only /usr/bin/time on a timeout and left the solver running (and overwriting the
   failure record); it now runs each case in its own process group and kills the group on timeout or at a memory
   limit.
+- OrdinaryDiffEq's cost: for 1e4 fixed steps of this linear problem, ImplicitEuler evaluates the Jacobian and
+  builds and factorises W at every step (DEStats: 10001 Jacobians, 10001 W, 10003 linear solves; 1.8 s forward on
+  32 x 16), although W is constant. JAX does CG per step and Firedrake factorises once (constant_jacobian), so the
+  Julia times include 1e4 sparse factorisations and are not a like-for-like speed comparison. Not yet tried: a
+  linear-operator formulation (SciMLOperators) or a solver option that keeps W for a constant step.
+

@@ -32,8 +32,9 @@ exact gradient of the discrete scheme itself (the scheme separates into a 1D eig
 JAX and pyadjoint differentiate the discrete scheme; SciMLSensitivity's adjoints are continuous adjoints solved at
 the same step, so their gradient differs from the discrete one by O(dt), except where the checkpointed re-solve
 adds its own error. Linear solves: JAX uses conjugate gradients per step (`jax.scipy.sparse.linalg.cg`, implicit
-derivative), Firedrake one MUMPS factorisation reused for every step (`constant_jacobian`); whether OrdinaryDiffEq
-reuses its factorisation across steps was not checked. Finite-difference checks use a random direction in each
+derivative), Firedrake one MUMPS factorisation reused for every step (`constant_jacobian`), and OrdinaryDiffEq's
+ImplicitEuler rebuilds and factorises its matrix at every step here (docs/log.md), so wall times across backends are
+not a like-for-like comparison of the libraries. Finite-difference checks use a random direction in each
 backend's own cell order, so their values are not comparable across backends; the uniform direction is.
 
 `backends/jax/heat_kt.py` is the follow-on: k = k0 rho (1 + T), Newton per step, `unrolled` (reverse mode through
