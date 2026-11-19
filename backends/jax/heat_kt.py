@@ -119,17 +119,14 @@ def main():
             f = jax.jit(build(p, a.steps, 30, "implicit"))
             eps = 1e-5
             res["fd_dir"] = (float(f(rho + eps * d)) - float(f(rho - eps * d))) / (2 * eps)
-            res["ok"] = True
-            raise StopIteration
-        vg = jax.jit(jax.value_and_grad(build(p, a.steps, a.newton, a.diff)))
-        t0 = time.perf_counter(); val, g = vg(rho); jax.block_until_ready(g); res["first_s"] = time.perf_counter() - t0
-        t0 = time.perf_counter(); jax.block_until_ready(vg(rho)); res["warm_s"] = time.perf_counter() - t0
-        g = np.asarray(g)
-        res["J"], res["dJ_uniform"] = float(val), float(g.sum())
-        res["grad_dir"] = float(g @ d)
+        else:
+            vg = jax.jit(jax.value_and_grad(build(p, a.steps, a.newton, a.diff)))
+            t0 = time.perf_counter(); val, g = vg(rho); jax.block_until_ready(g); res["first_s"] = time.perf_counter() - t0
+            t0 = time.perf_counter(); jax.block_until_ready(vg(rho)); res["warm_s"] = time.perf_counter() - t0
+            g = np.asarray(g)
+            res["J"], res["dJ_uniform"] = float(val), float(g.sum())
+            res["grad_dir"] = float(g @ d)
         res["ok"] = True
-    except StopIteration:
-        pass
     except Exception as e:  # noqa: BLE001
         res["ok"] = False
         res["error"] = f"{type(e).__name__}: {str(e)[:500]}"

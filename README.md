@@ -14,8 +14,8 @@ and J = integral of T(t_end)^2 and its derivative along uniform conductivity hav
 Every backend uses the same bilinear (Q1) elements, consistent mass and backward Euler with a fixed number of steps
 to t_end, so forward results agree (to 1e-11 or better; OrdinaryDiffEq's drifts to 3.5e-12 at 100000 steps) and
 differences come from how the gradient is taken. Besides the continuous closed form, `spike/problem.py` gives the
-exact gradient of the discrete scheme itself (generalized eigenpairs of K and M), so the differentiation error of a
-backend is measured apart from the discretisation error.
+exact gradient of the discrete scheme itself (the scheme separates into a 1D eigenproblem; checked against the full
+2D one), so the differentiation error of a backend is measured apart from the discretisation error.
 
 ## Backends and strategies
 
@@ -43,7 +43,7 @@ Newton solves; the converged reference runs in its own process.
 ## Running
 
 ```sh
-uv venv && uv pip install "jax[cpu]" numpy scipy
+uv venv && uv pip install "jax[cpu]==0.12.1" numpy scipy
 .venv/bin/python backends/jax/heat.py --nx 32 --ny 16 --steps 10000 --strategy tape --fd
 julia --project=backends/julia -e 'using Pkg; Pkg.instantiate()'
 julia --project=backends/julia backends/julia/heat.jl --nx 32 --ny 16 --steps 10000 --strategy gauss
@@ -51,6 +51,7 @@ docker run --rm -v "$PWD":/work -w /work firedrakeproject/firedrake-vanilla-defa
   python3 backends/firedrake/heat.py --nx 32 --ny 16 --steps 10000 --strategy checkpoint
 ```
 
-`.github/workflows/spike.yml` runs the whole sweep (10 to 100000 steps, three mesh sizes) on GitHub's CPU runners,
+`.github/workflows/spike.yml` runs the whole sweep (10 to 100000 steps; three mesh sizes for JAX and Firedrake, two
+for OrdinaryDiffEq) on GitHub's CPU runners,
 one process per case, killed and recorded at 13 GB, and `spike/summarise.py` turns the results into tables and
 plots (the run's `summary` artifact). Saved runs go in `results/`.

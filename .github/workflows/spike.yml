@@ -40,7 +40,7 @@ jobs:
           .venv/bin/python spike/run_case.py "out/fdcheck-jax-${{ matrix.strategy }}-${nx}x${ny}.json" 600 -- \
             .venv/bin/python backends/jax/heat.py --nx 16 --ny 8 --steps 100 --strategy "${{ matrix.strategy }}" --fd
           for s in $STEPS; do
-            .venv/bin/python spike/run_case.py "out/jax-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 2700 \
+            .venv/bin/python spike/run_case.py "out/jax-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 2400 \
               --mem-limit-mb "$MEM_LIMIT_MB" -- \
               .venv/bin/python backends/jax/heat.py --nx "$nx" --ny "$ny" --steps "$s" --strategy "${{ matrix.strategy }}"
           done
@@ -70,10 +70,10 @@ jobs:
         run: |
           read -r nx ny <<< "${{ matrix.mesh }}"
           mkdir -p out
-          python3 spike/run_case.py "out/fdcheck-julia-${{ matrix.strategy }}-${nx}x${ny}.json" 1200 -- \
+          python3 spike/run_case.py "out/fdcheck-julia-${{ matrix.strategy }}-${nx}x${ny}.json" 900 -- \
             julia --project=backends/julia backends/julia/heat.jl --nx 16 --ny 8 --steps 100 --strategy "${{ matrix.strategy }}" --fd
           for s in $STEPS; do
-            python3 spike/run_case.py "out/julia-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 3600 \
+            python3 spike/run_case.py "out/julia-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 3300 \
               --mem-limit-mb "$MEM_LIMIT_MB" -- \
               julia --project=backends/julia backends/julia/heat.jl --nx "$nx" --ny "$ny" --steps "$s" --strategy "${{ matrix.strategy }}"
           done
@@ -109,7 +109,7 @@ jobs:
           python3 spike/run_case.py "out/fdcheck-firedrake-${{ matrix.strategy }}-${nx}x${ny}.json" 600 -- \
             python3 backends/firedrake/heat.py --nx 16 --ny 8 --steps 100 --strategy "${{ matrix.strategy }}" --fd
           for s in $STEPS; do
-            python3 spike/run_case.py "out/firedrake-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 2700 \
+            python3 spike/run_case.py "out/firedrake-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 2400 \
               --mem-limit-mb "$MEM_LIMIT_MB" -- \
               python3 backends/firedrake/heat.py --nx "$nx" --ny "$ny" --steps "$s" --strategy "${{ matrix.strategy }}"
           done
@@ -131,10 +131,10 @@ jobs:
         run: |
           mkdir -p out
           for st in 10 50 200; do
-            .venv/bin/python spike/run_case.py "out/kt-reference-$st.json" 1200 -- \
+            .venv/bin/python spike/run_case.py "out/kt-reference-$st.json" 240 -- \
               .venv/bin/python backends/jax/heat_kt.py --nx 16 --ny 8 --steps "$st" --reference
             for n in 1 2 3 5; do for df in unrolled implicit; do
-              .venv/bin/python spike/run_case.py "out/kt-$df-n$n-$st.json" 1200 -- \
+              .venv/bin/python spike/run_case.py "out/kt-$df-n$n-$st.json" 240 -- \
                 .venv/bin/python backends/jax/heat_kt.py --nx 16 --ny 8 --steps "$st" --newton "$n" --diff "$df"
             done; done
           done

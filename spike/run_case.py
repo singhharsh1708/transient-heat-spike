@@ -16,6 +16,7 @@ import re
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 
 args = sys.argv[1:]
@@ -28,6 +29,8 @@ timed = os.path.exists("/usr/bin/time") and sys.platform.startswith("linux")
 full = (["/usr/bin/time", "-v"] if timed else []) + cmd
 if os.path.exists(out):
     os.remove(out)
+if mem_limit and not os.path.isdir("/proc"):
+    print("run_case: no /proc here, so --mem-limit-mb is not enforced and no memory is sampled", file=sys.stderr)
 
 
 def group_rss_mb(pgid: int) -> float:
@@ -49,7 +52,10 @@ def group_rss_mb(pgid: int) -> float:
 
 
 t0 = time.perf_counter()
-proc = subprocess.Popen(full, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+# Output goes to files, not pipes: nothing reads a pipe until the process ends, so a child writing more than a
+# pipe buffer (64 KB) would block until the timeout.
+fout, ferr = tempfile.TemporaryFile("w+"), tempfile.TemporaryFile("w+")
+proc = subprocess.Popen(full, stdout=fout, stderr=ferr, text=True, start_new_session=True)
 reason, sampled = None, 0.0
 while proc.poll() is None:
     time.sleep(0.2)
@@ -62,8 +68,10 @@ while proc.poll() is None:
     if reason:
         os.killpg(proc.pid, signal.SIGKILL)
         break
-stdout, stderr = proc.communicate()
+proc.wait()
 wall = time.perf_counter() - t0
+ferr.seek(0)
+stderr = ferr.read()
 m = re.search(r"Maximum resident set size \(kbytes\): (\d+)", stderr)
 
 res = None
@@ -74,7 +82,10 @@ if os.path.exists(out) and not reason:
     except (OSError, ValueError):
         res = None
 if res is None:
-    res = {"ok": False, "error": reason or f"no result (exit status {proc.returncode})", "stderr_tail": stderr[-1500:]}
+    code = proc.returncode
+    outside = code in (137, -9) and not reason  # SIGKILL from elsewhere, e.g. the kernel's OOM killer
+    res = {"ok": False, "error": reason or f"no result (exit status {code}{', killed' if outside else ''})",
+           "stderr_tail": stderr[-1500:]}
 res["exit_status"] = proc.returncode
 res["process_wall_s"] = wall
 res["sampled_peak_rss_mb"] = sampled

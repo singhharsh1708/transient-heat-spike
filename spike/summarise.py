@@ -28,8 +28,8 @@ for f in sorted(root.rglob("*.json")):
     if m:
         key = (m["backend"], m["strategy"], int(m["nx"]), int(m["ny"]))
         cases.setdefault(key, {})[int(m["steps"])] = d
-    elif f.name.startswith("fdcheck-"):
-        fdchecks[(d.get("backend"), d.get("strategy"))] = d
+    elif (m := re.match(r"^fdcheck-(jax|julia|firedrake)-([a-z-]+)-\d+x\d+\.json$", f.name)):
+        fdchecks[(m.group(1), m.group(2))] = d  # from the name: a killed run's stub has neither field
 
 steps_all = sorted({s for v in cases.values() for s in v})
 meshes = sorted({(k[2], k[3]) for k in cases})
@@ -43,10 +43,9 @@ _exact = {}
 
 
 def discrete(nx, ny, steps):
-    """dJ_h/deps of the discrete scheme (dense eigensolve; skipped above 3000 unknowns)."""
+    """dJ_h/deps of the discrete scheme, exact on every mesh (spike/problem.py: discrete_exact)."""
     if (nx, ny, steps) not in _exact:
-        pr = Problem(nx=nx, ny=ny)
-        _exact[(nx, ny, steps)] = discrete_exact(pr, steps)[1] if (nx + 1) * (ny + 1) <= 3000 else None
+        _exact[(nx, ny, steps)] = discrete_exact(Problem(nx=nx, ny=ny), steps)[1]
     return _exact[(nx, ny, steps)]
 
 
@@ -150,7 +149,8 @@ try:
     import matplotlib.pyplot as plt
 
     for what, ylabel, fname in (("mem", "peak resident memory (MB)", "memory.png"),
-                                ("err", "relative error of dJ/d(uniform k)", "gradient_error.png"),
+                                ("err", "dJ/d(uniform k): error against the discrete exact gradient",
+                                 "gradient_error.png"),
                                 ("time", "gradient wall time (s)", "time.png")):
         fig, axes = plt.subplots(1, len(meshes), figsize=(5 * len(meshes), 4), squeeze=False)
         for ax, (nx, ny) in zip(axes[0], meshes):
@@ -163,8 +163,8 @@ try:
                         v = peak(d)
                         (xs if d.get("ok") else xk).append(s)
                         (ys if d.get("ok") else yk).append(v if v else math.nan)
-                    elif what == "err" and (e := err(d)) is not None:
-                        xs.append(s); ys.append(e)
+                    elif what == "err" and d.get("ok") and "dJ_uniform" in d:
+                        xs.append(s); ys.append(max(abs(d["dJ_uniform"] / discrete(nx, ny, s) - 1), 1e-16))
                     elif what == "time" and d.get("ok") and "warm_s" in d:
                         xs.append(s); ys.append(d["warm_s"])
                 line, = ax.loglog(xs, ys, "o-", label=f"{k[0]} {k[1]}")

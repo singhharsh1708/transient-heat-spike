@@ -98,13 +98,38 @@ def assemble_dense(p: Problem, rho: np.ndarray):
 
 
 def discrete_exact(p: Problem, steps: int) -> tuple[float, float]:
-    """J_h and dJ_h/deps of the discrete scheme itself, uniform rho = 1, in closed form.
+    """J_h and dJ_h/deps of the discrete scheme itself, uniform rho = 1, exactly, on any mesh.
+
+    The Q1 matrices are tensor products, K = k0 (Kx (x) My + Mx (x) Ky) and M = Mx (x) My, and Ky annihilates
+    constants. The initial temperature is a function of x alone, f (x) 1, so every backward Euler step stays of that
+    form and reduces to (Mx + dt k0 Kx) f_{n+1} = Mx f_n, with J = Ly f_N' Mx f_N. The 1D problem then has the
+    eigenvector closed form below (discrete_exact_dense does the same on the full 2D matrices, as a cross-check).
+    """
+    from scipy.linalg import eigh
+
+    h, n = p.Lx / p.nx, p.nx + 1
+    Kx, Mx = np.zeros((n, n)), np.zeros((n, n))
+    for e in range(p.nx):
+        i = [e, e + 1]
+        Kx[np.ix_(i, i)] += p.k0 / h * np.array([[1.0, -1.0], [-1.0, 1.0]])
+        Mx[np.ix_(i, i)] += h / 6 * np.array([[2.0, 1.0], [1.0, 2.0]])
+    Kx, Mx = Kx[1:, 1:], Mx[1:, 1:]  # x = 0 held at zero
+    x = np.linspace(0.0, p.Lx, n)[1:]
+    lam, V = eigh(Kx, Mx)
+    c = V.T @ (Mx @ np.sin(np.pi * x / (2 * p.Lx)))
+    dt = p.t_end / steps
+    q = 1.0 + dt * lam
+    J = p.Ly * float(np.sum(c**2 * q ** (-2.0 * steps)))
+    dJ = p.Ly * float(np.sum(-2.0 * steps * c**2 * dt * lam * q ** (-2.0 * steps - 1)))
+    return J, dJ
+
+
+def discrete_exact_dense(p: Problem, steps: int) -> tuple[float, float]:
+    """The same on the full 2D matrices (dense; a few thousand unknowns at most).
 
     With K v_i = lam_i M v_i (M-orthonormal v_i) and T0 = sum c_i v_i, backward Euler gives
     T_N = sum c_i (1 + dt lam_i)^-N v_i, so J_h = sum c_i^2 (1 + dt lam_i)^-2N. Scaling the conductivity by
     (1 + eps) scales every lam_i, so dJ_h/deps = sum -2N c_i^2 dt lam_i (1 + dt lam_i)^(-2N-1).
-    A backend's gradient compared with this shows its differentiation error alone, without the spatial and time
-    discretisation error that the continuous closed form includes. Dense: practical up to a few thousand unknowns.
     """
     from scipy.linalg import eigh
 
@@ -140,6 +165,9 @@ if __name__ == "__main__":
     x = np.array([0.0, 0.3, 0.3, 0.0])
     assert np.isclose(x @ ke @ x, 0.3 * 0.2)
     p = Problem(nx=16, ny=8)
+    for steps in (10, 1000, 100000):  # the separable oracle against the dense 2D one
+        a, b = discrete_exact(p, steps), discrete_exact_dense(p, steps)
+        assert abs(a[0] / b[0] - 1) < 1e-10 and abs(a[1] / b[1] - 1) < 1e-10, (steps, a, b)
     for steps in (10, 100, 1000):
         Jh = reference_solve(p, np.ones(p.n_cells), steps)
         print(f"steps {steps:5d}  J_h {Jh:.6f}  exact {p.exact_J():.6f}  rel err {abs(Jh / p.exact_J() - 1):.2e}")
