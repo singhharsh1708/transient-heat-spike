@@ -54,7 +54,8 @@ def group_rss_mb(pgid: int) -> float:
 t0 = time.perf_counter()
 # Output goes to files, not pipes: nothing reads a pipe until the process ends, so a child writing more than a
 # pipe buffer (64 KB) would block until the timeout.
-fout, ferr = tempfile.TemporaryFile("w+"), tempfile.TemporaryFile("w+")
+fout = tempfile.TemporaryFile("w+", errors="replace")
+ferr = tempfile.TemporaryFile("w+", errors="replace")
 proc = subprocess.Popen(full, stdout=fout, stderr=ferr, text=True, start_new_session=True)
 reason, sampled = None, 0.0
 while proc.poll() is None:

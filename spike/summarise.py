@@ -149,7 +149,7 @@ try:
     import matplotlib.pyplot as plt
 
     for what, ylabel, fname in (("mem", "peak resident memory (MB)", "memory.png"),
-                                ("err", "dJ/d(uniform k): error against the discrete exact gradient",
+                                ("err", "relative error vs discrete exact dJ",
                                  "gradient_error.png"),
                                 ("time", "gradient wall time (s)", "time.png")):
         fig, axes = plt.subplots(1, len(meshes), figsize=(5 * len(meshes), 4), squeeze=False)

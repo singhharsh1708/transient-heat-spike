@@ -3,7 +3,8 @@
 ## 2026-11-19
 
 - JAX backend: the first gradient was wrong although the forward matched the dense reference to 1e-13 (16 x 8,
-  100 steps: 1.3e-4 off along uniform conductivity, 3.5e-4 against central differences along a random direction). Cause: the operator handed to `jax.scipy.sparse.linalg.cg` was not symmetric (free-node rows read the
+  100 steps: 1.3e-4 off along uniform conductivity, 3.5e-4 against central differences along a random direction).
+  Cause: the operator handed to `jax.scipy.sparse.linalg.cg` was not symmetric (free-node rows read the
   Dirichlet nodes' values, Dirichlet rows were the identity). CG's derivative solves with the same operator,
   assuming symmetry, so the adjoint was wrong while the forward was not (the Dirichlet values are zero). Masking the
   input as well as the output fixed it (gradient against central differences 2e-11). Only an FD check shows this;
@@ -21,7 +22,8 @@
 - Checking against the continuous closed form alone would have missed the adjoint bug above (3.5e-4) on the 32 x 16
   mesh, whose spatial error is 6e-4; it can also make an O(dt) adjoint look better than an exact one when the two
   errors partly cancel. Hence the discrete exact gradient (spike/problem.py: discrete_exact, by separation of
-  variables; exact on every mesh, and against it JAX is within 1e-13).
+  variables; exact on every mesh; against it JAX is within 1e-13 up to 1000 steps and 2e-11 at
+  100000, where the forward J drifts by the same amount: rounding over the steps).
 - BacksolveAdjoint returns a gradient 96 % off (98 % at 1000 steps) with no error: it integrates the heat equation
   backwards in time.
 - Firedrake 2026.10.0 (pyadjoint 2026.10.0, checkpoint_schedules 1.0.4): forward J equal to the JAX and dense

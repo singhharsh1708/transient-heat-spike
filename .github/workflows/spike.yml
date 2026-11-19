@@ -37,8 +37,10 @@ jobs:
         run: |
           read -r nx ny <<< "${{ matrix.mesh }}"
           mkdir -p out
-          .venv/bin/python spike/run_case.py "out/fdcheck-jax-${{ matrix.strategy }}-${nx}x${ny}.json" 600 -- \
-            .venv/bin/python backends/jax/heat.py --nx 16 --ny 8 --steps 100 --strategy "${{ matrix.strategy }}" --fd
+          if [ "$nx" = 32 ]; then  # once per strategy, in the smallest-mesh job
+            .venv/bin/python spike/run_case.py "out/fdcheck-jax-${{ matrix.strategy }}-${nx}x${ny}.json" 600 -- \
+              .venv/bin/python backends/jax/heat.py --nx 16 --ny 8 --steps 100 --strategy "${{ matrix.strategy }}" --fd
+          fi
           for s in $STEPS; do
             .venv/bin/python spike/run_case.py "out/jax-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 2400 \
               --mem-limit-mb "$MEM_LIMIT_MB" -- \
@@ -70,8 +72,10 @@ jobs:
         run: |
           read -r nx ny <<< "${{ matrix.mesh }}"
           mkdir -p out
-          python3 spike/run_case.py "out/fdcheck-julia-${{ matrix.strategy }}-${nx}x${ny}.json" 900 -- \
-            julia --project=backends/julia backends/julia/heat.jl --nx 16 --ny 8 --steps 100 --strategy "${{ matrix.strategy }}" --fd
+          if [ "$nx" = 32 ]; then  # once per strategy, in the smallest-mesh job
+            python3 spike/run_case.py "out/fdcheck-julia-${{ matrix.strategy }}-${nx}x${ny}.json" 900 -- \
+              julia --project=backends/julia backends/julia/heat.jl --nx 16 --ny 8 --steps 100 --strategy "${{ matrix.strategy }}" --fd
+          fi
           for s in $STEPS; do
             python3 spike/run_case.py "out/julia-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 3300 \
               --mem-limit-mb "$MEM_LIMIT_MB" -- \
@@ -106,8 +110,10 @@ jobs:
           apt-get update -qq && apt-get install -y -qq time > /dev/null
           read -r nx ny <<< "${{ matrix.mesh }}"
           mkdir -p out
-          python3 spike/run_case.py "out/fdcheck-firedrake-${{ matrix.strategy }}-${nx}x${ny}.json" 600 -- \
-            python3 backends/firedrake/heat.py --nx 16 --ny 8 --steps 100 --strategy "${{ matrix.strategy }}" --fd
+          if [ "$nx" = 32 ]; then  # once per strategy, in the smallest-mesh job
+            python3 spike/run_case.py "out/fdcheck-firedrake-${{ matrix.strategy }}-${nx}x${ny}.json" 600 -- \
+              python3 backends/firedrake/heat.py --nx 16 --ny 8 --steps 100 --strategy "${{ matrix.strategy }}" --fd
+          fi
           for s in $STEPS; do
             python3 spike/run_case.py "out/firedrake-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 2400 \
               --mem-limit-mb "$MEM_LIMIT_MB" -- \
