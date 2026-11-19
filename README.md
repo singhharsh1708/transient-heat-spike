@@ -66,9 +66,9 @@ From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md); notes
   13 GB on 128 x 64.
 - JAX's checkpointing stays within +102 MB on every mesh (1.6-1.8 times the tape's time at 1e5 steps).
   pyadjoint's Revolve stores no per-step state but still grows (+0.64 to +1.6 GB at 1e5 steps, 2.2-3.3 times the
-  time, default settings): its tape keeps three blocks per step (about 5-6 KB/step on both meshes measured), and garbage from
-  the recomputation, which grows with the mesh, waits for the cycle collector; gc_timestep_frequency removes the
-  second part at 1.2-2 times the time (repro/pyadjoint_checkpoint_memory.py, docs/log.md).
+  time, default settings): its tape keeps three blocks per step (about 5-6 KB/step on both meshes measured), and
+  garbage from the recomputation, which grows with the mesh, waits for the cycle collector; gc_timestep_frequency
+  removes the second part at 1.2-2 times the time (repro/pyadjoint_checkpoint_memory.py, docs/log.md).
 - JAX and pyadjoint match the exact discrete gradient to 2.1e-11 or better; SciMLSensitivity's continuous adjoints
   are O(dt) off (1e-5 to 2e-5 at 1e5 steps), and BacksolveAdjoint is 89-100 % off, except at 1e5 steps on 32 x 16,
   where it reaches 5.3e289.
@@ -76,8 +76,10 @@ From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md); notes
   than implicit differentiation; from three iterations both agree with it to 2.1e-14 or better.
 
 Separately, repro/sciml_checkpoint_resolve.jl shows that SciMLSensitivity's checkpointed InterpolatingAdjoint
-re-solves each checkpoint interval adaptively, ignoring a fixed dt, so its accuracy is set by the solve tolerances
-rather than the step: at the default tolerances the error stops shrinking (1.5, 0.78 and 0.72 % at 1e2, 1e3 and 1e4
-steps, against 1.0, 0.099 and 0.0099 % without checkpointing), and with reltol = 1e-10 it is first order again
-(0.75, 0.075, 0.0077 %). Same root cause as SciMLSensitivity#1705, where fixed-step-only methods raise an error;
-with ImplicitEuler nothing warns. With checkpoints at isqrt(steps) times, as in the CI sweep, the effect is small.
+re-solves each checkpoint interval adaptively, ignoring a fixed dt, so its error has a floor set by the re-solve's
+tolerances (the adjoint defaults, abstol = 1e-6 and reltol = 1e-3) rather than by the step. With one checkpoint
+interval (only the end state saved) the error stalls at the defaults (1.5, 0.78 and 0.72 % at 1e2, 1e3 and 1e4 steps,
+against 1.0, 0.099 and 0.0099 % without checkpointing), and with abstol = 1e-12 and reltol = 1e-10 it is first order
+again (0.75, 0.075, 0.0077 %). Same root cause as SciMLSensitivity#1705, where fixed-step-only methods raise an
+error; with ImplicitEuler nothing warns. With checkpoints at isqrt(steps) times, as in the CI sweep, the effect is
+small.

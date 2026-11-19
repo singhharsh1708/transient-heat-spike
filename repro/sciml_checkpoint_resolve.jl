@@ -1,7 +1,9 @@
 # Minimal reproducer: InterpolatingAdjoint(checkpointing = true) re-solves its checkpoint intervals adaptively, so
 # with a fixed-step forward solve (adaptive = false, dt) the gradient carries the re-solve's tolerance error, which
-# does not shrink with dt: at the default tolerances it stalls near 0.7 %, and only tighter solve tolerances bring
-# back first order. Without checkpointing the same adjoint converges at first order in dt at either setting.
+# does not shrink with dt: at the adjoint's default tolerances (abstol 1e-6, reltol 1e-3) it stalls near 0.7 %, and
+# with both tightened (abstol 1e-12, reltol 1e-10) it is first order again. Without checkpointing the same adjoint
+# converges at first order in dt at either setting. saveat = [T] gives one checkpoint interval, the whole run, which
+# makes the effect large; with many checkpoints it is much smaller.
 # Same root cause as SciMLSensitivity#1705 (the fixed dt is not passed to the re-solve), where fixed-step-only
 # methods raise an error; with ImplicitEuler there is no error.
 #
