@@ -1,17 +1,16 @@
 # Where pyadjoint's memory goes with and without Revolve checkpointing, on the spike's Firedrake backend.
 #
-#   for m in tape checkpoint checkpoint-gc; do
+#   for m in tape checkpoint checkpoint-gc; do for n in 1000 4000; do
 #     docker run --rm -v "$PWD":/work -w /work firedrakeproject/firedrake-vanilla-default:2026.10.0 \
-#       python3 repro/pyadjoint_checkpoint_memory.py $m 4000
-#   done
+#       python3 repro/pyadjoint_checkpoint_memory.py $m $n
+#   done; done
 #
-# One mode per process, since the peak is the process's high-water mark. It prints the peak RSS growth over a
-# compiled 5-step run, the gradient, and how many tape variables still hold a stored state or an adjoint value after
-# the derivative. A third argument `trace` adds the Python heap's share (tracemalloc, which inflates the peak).
-# With Revolve (ceil(sqrt(steps)) snapshots) no per-step state is held, yet memory still grows with the step count:
-# the tape records three blocks per step, and the reverse sweep's garbage waits for the collector
-# (gc_timestep_frequency trades that for time). The default tape holds every step's state and, after the
-# derivative, an adjoint value for every step as well.
+# One mode and step count per process, since the peak is the process's high-water mark, measured over a 10-step
+# annotated derivative in the same mode (so compilation is outside it). The growth has a part that does not depend
+# on the step count, so the cost per step is the slope between two step counts. It also prints how many tape
+# variables still hold a stored state or an adjoint value after the derivative; a third argument `trace` adds the
+# Python heap (tracemalloc, which inflates the peak, so take peaks from runs without it).
+# With Revolve (ceil(sqrt(steps)) snapshots) no per-step state is held, yet memory still grows with the step count.
 
 import gc
 import math
@@ -33,25 +32,35 @@ from spike.problem import Problem  # noqa: E402
 mode = sys.argv[1]  # tape, checkpoint, or checkpoint-gc (collect garbage every 50 steps)
 steps = int(sys.argv[2]) if len(sys.argv) > 2 else 4000
 h = Heat(Problem(nx=32, ny=16))
-h.run(Function(h.D).assign(1.0), 5)
 
 
 def peak_mb():
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
 
 
-tape = get_working_tape()
-tape.clear_tape()
-gc.collect()
-base = peak_mb()
-rho = Function(h.D).assign(1.0)
-stepper = None
-if mode.startswith("checkpoint"):
-    kw = {"gc_timestep_frequency": 50} if mode == "checkpoint-gc" else {}
-    tape.enable_checkpointing(MultistageCheckpointSchedule(steps, math.ceil(math.sqrt(steps)), 0), **kw)
-    stepper = tape.timestepper
-elif mode != "tape":
+if mode not in ("tape", "checkpoint", "checkpoint-gc"):
     raise ValueError(mode)
+
+
+def start(n):
+    """A clean tape for n steps in this mode; returns the control and the time stepper."""
+    tape.clear_tape()
+    gc.collect()
+    if mode.startswith("checkpoint"):
+        kw = {"gc_timestep_frequency": 50} if mode == "checkpoint-gc" else {}
+        tape.enable_checkpointing(MultistageCheckpointSchedule(n, math.ceil(math.sqrt(n)), 0), **kw)
+        return Function(h.D).assign(1.0), tape.timestepper
+    return Function(h.D).assign(1.0), None
+
+
+tape = get_working_tape()
+rho, stepper = start(10)  # warm-up: compiles the forward and adjoint forms
+continue_annotation()
+J = h.run(rho, 10, stepper)
+pause_annotation()
+ReducedFunctional(J, Control(rho)).derivative()
+rho, stepper = start(steps)
+base = peak_mb()
 trace = sys.argv[3:] == ["trace"]
 if trace:
     tracemalloc.start()

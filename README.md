@@ -59,15 +59,20 @@ plots (the run's `summary` artifact). Saved runs go in `results/`.
 
 ## Results
 
-From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md); notes in docs/log.md):
+From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md); notes in docs/log.md; GB = 1024 MB):
 
-- A full tape grows linearly with the step count: at 1e5 steps JAX needs +1.6 GB on 32 x 16 and +6.3 GB on
-  64 x 32 and refuses 128 x 64 up front; pyadjoint needs +4.5 and +9.2 GB and is killed at 13 GB on 128 x 64.
-- JAX's checkpointing stays within +102 MB at 1.6-1.8 times the time. pyadjoint's Revolve stores no per-step state
-  but still grows (+0.7 to +1.6 GB at 1e5 steps, 2.2-3.3 times the time): its tape keeps three blocks per step and
-  the reverse sweep's garbage is collected late (repro/pyadjoint_checkpoint_memory.py).
-- JAX and pyadjoint match the exact discrete gradient to 2e-11 or better; SciMLSensitivity's continuous adjoints
-  are O(dt) off (1e-5 at 1e5 steps), BacksolveAdjoint is 89-100 % off and overflows at 1e5 steps, and the
-  checkpointed InterpolatingAdjoint re-solves its intervals adaptively (repro/sciml_checkpoint_resolve.jl).
+- A full tape grows linearly with the step count: at 1e5 steps JAX needs +1.5 GB on 32 x 16 and +6.1 GB on
+  64 x 32 and refuses 128 x 64 up front (it asks for 24.4 GB); pyadjoint needs +4.4 and +9.0 GB and is killed at
+  13 GB on 128 x 64.
+- JAX's checkpointing stays within +102 MB on every mesh (1.6-1.8 times the tape's time at 1e5 steps).
+  pyadjoint's Revolve stores no per-step state but still grows (+0.64 to +1.6 GB at 1e5 steps, 2.2-3.3 times the
+  time): its tape keeps three blocks per step, about 5 KB/step that garbage collection does not remove
+  (repro/pyadjoint_checkpoint_memory.py).
+- JAX and pyadjoint match the exact discrete gradient to 2.1e-11 or better; SciMLSensitivity's continuous adjoints
+  are O(dt) off (1e-5 to 2e-5 at 1e5 steps), and BacksolveAdjoint is 89-100 % off (5.3e289 at 1e5 steps on 32 x 16).
 - k(T): with one Newton iteration per step, unrolled differentiation is 7-22 times closer to the converged gradient
   than implicit differentiation; from three iterations both agree with it to 3e-14 or better.
+
+Separately, repro/sciml_checkpoint_resolve.jl shows that SciMLSensitivity's checkpointed InterpolatingAdjoint
+re-solves each checkpoint interval adaptively, ignoring a fixed dt: saving only the end state leaves its gradient
+about 0.7 % off at every step count. With checkpoints at isqrt(steps) times, as in the CI sweep, the effect is small.

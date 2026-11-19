@@ -49,14 +49,20 @@ def discrete(nx, ny, steps):
     return _exact[(nx, ny, steps)]
 
 
+def refused_mb(d):
+    """The size XLA asked for when it refused a run up front (it never reached that peak), else None."""
+    m = re.search(r"Out of memory allocating (\d+) bytes", str(d.get("error", "")))
+    return int(m.group(1)) / 2**20 if m else None
+
+
 def mem_cell(d):
     if d is None:
         return "-"
     pk = peak(d)
     if not d.get("ok"):
         e = str(d.get("error", ""))
-        if (m := re.search(r"Out of memory allocating (\d+) bytes", e)):  # XLA refuses up front, with the size
-            return f"out of memory: needs {int(m.group(1)) / 2**30:.1f} GB"
+        if (need := refused_mb(d)) is not None:
+            return f"out of memory: needs {need / 1024:.1f} GB"
         why = "killed" if "killed" in e else "failed"
         return f"{why}{f' at {pk / 1024:.1f} GB' if pk else ''}"
     base = d.get("baseline_rss_mb")
@@ -105,7 +111,9 @@ for nx, ny in meshes:
             f"{e:.1e}" if (e := err(cases[k].get(s))) is not None else "-" for s in steps_all) + " |")
 
 if fdchecks:
-    lines += ["\n## Gradient against finite differences of the same backend's forward (16 x 8 mesh, 100 steps)\n",
+    runs = {(d["nx"], d["ny"], d["steps"]) for d in fdchecks.values() if "nx" in d}  # a killed run's stub has none
+    where = "; ".join(f"{nx} x {ny} mesh, {st} steps" for nx, ny, st in sorted(runs))
+    lines += [f"\n## Gradient against finite differences of the same backend's forward ({where})\n",
               "| backend | strategy | grad . d | central FD | relative difference |", "|---|---|---|---|---|"]
     for (b, s), d in sorted(fdchecks.items()):
         if d.get("ok") and d.get("fd_dir"):
@@ -156,7 +164,8 @@ try:
                                 ("err", "relative error vs discrete exact dJ (triangle: > 1e3)",
                                  "gradient_error.png"),
                                 ("time", "gradient wall time (s)", "time.png")):
-        fig, axes = plt.subplots(1, len(meshes), figsize=(5 * len(meshes), 4), squeeze=False)
+        fig, axes = plt.subplots(1, len(meshes), figsize=(5 * len(meshes) + 2, 4), squeeze=False,
+                                 layout="constrained")
         for ax, (nx, ny) in zip(axes[0], meshes):
             for k in sorted(cases):
                 if (k[2], k[3]) != (nx, ny):
@@ -164,14 +173,14 @@ try:
                 xs, ys, xk, yk = [], [], [], []
                 for s, d in sorted(cases[k].items()):
                     if what == "mem":
-                        v = peak(d)
+                        v = refused_mb(d) or peak(d)  # a refusal is drawn at the size it asked for
                         (xs if d.get("ok") else xk).append(s)
                         (ys if d.get("ok") else yk).append(v if v else math.nan)
                     elif what == "err" and d.get("ok") and "dJ_uniform" in d:
                         xs.append(s); ys.append(max(abs(d["dJ_uniform"] / discrete(nx, ny, s) - 1), 1e-16))
                     elif what == "time" and d.get("ok") and "warm_s" in d:
                         xs.append(s); ys.append(d["warm_s"])
-                # A blown-up error (backsolve reaches 1e289) breaks log-axis ticks: draw it at the cap
+                # A blown-up error (backsolve's 5.3e289) breaks log-axis ticks: draw it at the cap
                 over = [i for i, y in enumerate(ys) if what == "err" and not (y <= CAP)]
                 ys = [CAP if i in over else y for i, y in enumerate(ys)]
                 line, = ax.loglog(xs, ys, "o-", label=f"{k[0]} {k[1]}")
@@ -184,8 +193,7 @@ try:
             ax.set_xlabel("time steps")
             ax.set_ylabel(ylabel)
             ax.grid(True, which="both", alpha=0.3)
-        axes[0][0].legend(fontsize=7)
-        fig.tight_layout()
+        fig.legend(*axes[0][0].get_legend_handles_labels(), loc="outside right upper", fontsize=7)
         fig.savefig(out / fname, dpi=120)
         plt.close(fig)
 except ImportError:

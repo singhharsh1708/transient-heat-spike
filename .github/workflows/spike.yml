@@ -18,6 +18,8 @@ concurrency:
 env:
   STEPS: "10 100 1000 10000 100000"
   MEM_LIMIT_MB: "13312"
+  FD_NX: "16"  # mesh of the finite-difference checks
+  FD_NY: "8"
 
 jobs:
   jax:
@@ -38,8 +40,8 @@ jobs:
           read -r nx ny <<< "${{ matrix.mesh }}"
           mkdir -p out
           if [ "$nx" = 32 ]; then  # once per strategy, in the smallest-mesh job
-            .venv/bin/python spike/run_case.py "out/fdcheck-jax-${{ matrix.strategy }}-16x8.json" 600 -- \
-              .venv/bin/python backends/jax/heat.py --nx 16 --ny 8 --steps 100 --strategy "${{ matrix.strategy }}" --fd
+            .venv/bin/python spike/run_case.py "out/fdcheck-jax-${{ matrix.strategy }}-${FD_NX}x${FD_NY}.json" 600 -- \
+              .venv/bin/python backends/jax/heat.py --nx "$FD_NX" --ny "$FD_NY" --steps 100 --strategy "${{ matrix.strategy }}" --fd
           fi
           for s in $STEPS; do
             .venv/bin/python spike/run_case.py "out/jax-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 2400 \
@@ -73,8 +75,8 @@ jobs:
           read -r nx ny <<< "${{ matrix.mesh }}"
           mkdir -p out
           if [ "$nx" = 32 ]; then  # once per strategy, in the smallest-mesh job
-            python3 spike/run_case.py "out/fdcheck-julia-${{ matrix.strategy }}-16x8.json" 900 -- \
-              julia --project=backends/julia backends/julia/heat.jl --nx 16 --ny 8 --steps 100 --strategy "${{ matrix.strategy }}" --fd
+            python3 spike/run_case.py "out/fdcheck-julia-${{ matrix.strategy }}-${FD_NX}x${FD_NY}.json" 900 -- \
+              julia --project=backends/julia backends/julia/heat.jl --nx "$FD_NX" --ny "$FD_NY" --steps 100 --strategy "${{ matrix.strategy }}" --fd
           fi
           for s in $STEPS; do
             python3 spike/run_case.py "out/julia-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 3300 \
@@ -111,8 +113,8 @@ jobs:
           read -r nx ny <<< "${{ matrix.mesh }}"
           mkdir -p out
           if [ "$nx" = 32 ]; then  # once per strategy, in the smallest-mesh job
-            python3 spike/run_case.py "out/fdcheck-firedrake-${{ matrix.strategy }}-16x8.json" 600 -- \
-              python3 backends/firedrake/heat.py --nx 16 --ny 8 --steps 100 --strategy "${{ matrix.strategy }}" --fd
+            python3 spike/run_case.py "out/fdcheck-firedrake-${{ matrix.strategy }}-${FD_NX}x${FD_NY}.json" 600 -- \
+              python3 backends/firedrake/heat.py --nx "$FD_NX" --ny "$FD_NY" --steps 100 --strategy "${{ matrix.strategy }}" --fd
           fi
           for s in $STEPS; do
             python3 spike/run_case.py "out/firedrake-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 2400 \
