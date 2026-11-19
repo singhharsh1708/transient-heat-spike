@@ -132,7 +132,9 @@ for f in sorted(root.rglob("kt-*.json")):
 if kt:
     refcheck = "; ".join(f"{s} steps {abs(r['grad_dir'] / r['fd_dir'] - 1):.0e}" for s, r in sorted(kt_ref.items())
                          if r.get("ok"))
-    lines += ["\n## k(T) follow-on: Newton per step, unrolled vs implicit differentiation (JAX, 16 x 8 mesh)\n",
+    kt_mesh = "; ".join(f"{nx} x {ny} mesh" for nx, ny in sorted(
+        {(d["nx"], d["ny"]) for d in [*kt.values(), *kt_ref.values()] if "nx" in d}))
+    lines += [f"\n## k(T) follow-on: Newton per step, unrolled vs implicit differentiation (JAX, {kt_mesh})\n",
               "Errors against the converged implicit gradient (30 Newton iterations, its own process; against central",
               f"differences: {refcheck}). Peak MB is the whole process's (dense Newton solves).\n",
               "| steps | Newton iterations | forward J error | unrolled: gradient error, peak MB, s | "

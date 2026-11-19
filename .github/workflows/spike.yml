@@ -18,7 +18,7 @@ concurrency:
 env:
   STEPS: "10 100 1000 10000 100000"
   MEM_LIMIT_MB: "13312"
-  FD_NX: "16"  # mesh of the finite-difference checks
+  FD_NX: "16"  # mesh of the finite-difference checks and the k(T) follow-on
   FD_NY: "8"
 
 jobs:
@@ -140,10 +140,10 @@ jobs:
           mkdir -p out
           for st in 10 50 200; do
             .venv/bin/python spike/run_case.py "out/kt-reference-$st.json" 240 -- \
-              .venv/bin/python backends/jax/heat_kt.py --nx 16 --ny 8 --steps "$st" --reference
+              .venv/bin/python backends/jax/heat_kt.py --nx "$FD_NX" --ny "$FD_NY" --steps "$st" --reference
             for n in 1 2 3 5; do for df in unrolled implicit; do
               .venv/bin/python spike/run_case.py "out/kt-$df-n$n-$st.json" 240 -- \
-                .venv/bin/python backends/jax/heat_kt.py --nx 16 --ny 8 --steps "$st" --newton "$n" --diff "$df"
+                .venv/bin/python backends/jax/heat_kt.py --nx "$FD_NX" --ny "$FD_NY" --steps "$st" --newton "$n" --diff "$df"
             done; done
           done
       - uses: actions/upload-artifact@v4

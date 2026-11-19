@@ -54,13 +54,18 @@
   +9.0 GB, killed at 13 GB on 128 x 64. JAX checkpointing stays within +102 MB on every mesh, at 1.6-1.8 times the
   tape's time at 1e5 steps on the two meshes where the tape finished. Gradients of JAX and pyadjoint agree with the
   exact discrete gradient to 2.1e-11 or better everywhere. (GB here is 1024 MB, as in the tables.)
-- pyadjoint's Revolve does not give flat memory: +0.64, +0.83 and +1.6 GB at 1e5 steps on the three meshes
-  (against +4.4, +9.0 and over 13 GB for its tape), at 2.2-3.3 times the tape's time; on 32 x 16 it grows 6.5
-  KB/step from 1e4 to 1e5 steps. repro/pyadjoint_checkpoint_memory.py (32 x 16, Firedrake 2026.10.0, pyadjoint
-  2026.10.0, checkpoint_schedules 1.0.4; slopes between 1000 and 4000 steps, after a 10-step annotated warm-up):
-  with Revolve 3 of the tape's variables hold a state after the derivative, at any step count (the full tape:
-  every step's state and adjoint value), yet the peak grows 6.8 KB/step plus about 14 MB that does not depend on
-  the step count (full tape 45.7 KB/step). Collecting garbage every 50 steps (gc_timestep_frequency=50) removes the
-  fixed part and leaves 5.5 KB/step, at twice the time, with the same gradient to 13 digits; the Python heap then
-  grows 4.3 KB/step (tracemalloc), so most of what remains is the tape's three blocks per step, which no setting
-  here removes. The time-dependent benchmark should report memory against step count for checkpointed runs too.
+- pyadjoint's Revolve does not give flat memory: +0.64, +0.84 and +1.6 GB at 1e5 steps on the three meshes
+  (against +4.4, +9.0 and over 13 GB for its tape), at 2.2-3.3 times the tape's time, with pyadjoint's default
+  settings; from 1e4 to 1e5 steps it grows 6.5, 8.4 and 15.6 KB/step. repro/pyadjoint_checkpoint_memory.py
+  (Firedrake 2026.10.0, pyadjoint 2026.10.0, checkpoint_schedules 1.0.4; slopes between 1000 and 4000 steps, after
+  a 10-step annotated warm-up): with Revolve 3 of the tape's variables hold a state after the derivative at any
+  step count (the full tape: every step's state and adjoint value, 45.6 KB/step on 32 x 16 and 290 KB/step on
+  128 x 64). Revolve grows 6.6 KB/step plus 15 MB on 32 x 16 and 15.9 KB/step plus 96 MB on 128 x 64. Two parts:
+  - the tape's own records, three blocks per step: with garbage collected every 50 steps
+    (gc_timestep_frequency=50) the growth is 5.2 and 5.8 KB/step and the Python heap grows 4.4 KB/step on both
+    meshes (tracemalloc), about 0.5 GB at 1e5 steps that no setting here removes;
+  - garbage from the recomputation, which grows with the mesh and waits for the cycle collector; collecting every
+    50 steps removes it at 1.3-1.4 times the time on 128 x 64 and about 2 times on 32 x 16, with the same gradient
+    to 13 digits.
+  The CI sweep used the default (no periodic collection). The time-dependent benchmark should report memory against
+  step count for checkpointed runs too, and state the collector setting.
