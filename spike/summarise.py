@@ -54,7 +54,10 @@ def mem_cell(d):
         return "-"
     pk = peak(d)
     if not d.get("ok"):
-        why = "killed" if "killed" in str(d.get("error", "")) else "failed"
+        e = str(d.get("error", ""))
+        if (m := re.search(r"Out of memory allocating (\d+) bytes", e)):  # XLA refuses up front, with the size
+            return f"out of memory: needs {int(m.group(1)) / 2**30:.1f} GB"
+        why = "killed" if "killed" in e else "failed"
         return f"{why}{f' at {pk / 1024:.1f} GB' if pk else ''}"
     base = d.get("baseline_rss_mb")
     return f"{pk:.0f}" + (f" (+{pk - base:.0f})" if base else "")
