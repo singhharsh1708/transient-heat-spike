@@ -56,3 +56,18 @@ docker run --rm -v "$PWD":/work -w /work firedrakeproject/firedrake-vanilla-defa
 for OrdinaryDiffEq) on GitHub's CPU runners,
 one process per case, killed and recorded at 13 GB, and `spike/summarise.py` turns the results into tables and
 plots (the run's `summary` artifact). Saved runs go in `results/`.
+
+## Results
+
+From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md); notes in docs/log.md):
+
+- A full tape grows linearly with the step count: at 1e5 steps JAX needs +1.6 GB on 32 x 16 and +6.3 GB on
+  64 x 32 and refuses 128 x 64 up front; pyadjoint needs +4.5 and +9.2 GB and is killed at 13 GB on 128 x 64.
+- JAX's checkpointing stays within +102 MB at 1.6-1.8 times the time. pyadjoint's Revolve stores no per-step state
+  but still grows (+0.7 to +1.6 GB at 1e5 steps, 2.2-3.3 times the time): its tape keeps three blocks per step and
+  the reverse sweep's garbage is collected late (repro/pyadjoint_checkpoint_memory.py).
+- JAX and pyadjoint match the exact discrete gradient to 2e-11 or better; SciMLSensitivity's continuous adjoints
+  are O(dt) off (1e-5 at 1e5 steps), BacksolveAdjoint is 89-100 % off and overflows at 1e5 steps, and the
+  checkpointed InterpolatingAdjoint re-solves its intervals adaptively (repro/sciml_checkpoint_resolve.jl).
+- k(T): with one Newton iteration per step, unrolled differentiation is 7-22 times closer to the converged gradient
+  than implicit differentiation; from three iterations both agree with it to 3e-14 or better.

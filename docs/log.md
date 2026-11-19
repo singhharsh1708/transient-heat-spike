@@ -44,3 +44,20 @@
   Julia times include 1e4 sparse factorisations and are not a like-for-like speed comparison. Not yet tried: a
   linear-operator formulation (SciMLOperators) or a solver option that keeps W for a constant step.
 
+
+## 2026-11-20
+
+- CI run 1 (results/ci-run-1, run 44586316772): every case ran; the summary job failed while plotting because
+  BacksolveAdjoint's error reached 5e289 at 1e5 steps on 32 x 16 and broke matplotlib's log-axis ticks (errors above
+  1e3 are now drawn as a triangle at the cap). Full tape at 1e5 steps: JAX +1.6 GB (32 x 16) and +6.3 GB (64 x 32),
+  and on 128 x 64 XLA refuses up front (it asks for 26.2e9 bytes); pyadjoint +4.5 and +9.2 GB, killed at 13 GB on
+  128 x 64. JAX checkpointing within +102 MB at 1.6-1.8 times the tape's time. Gradients of JAX and pyadjoint agree
+  with the exact discrete gradient to 2e-11 or better everywhere.
+- pyadjoint's Revolve does not give flat memory: +0.66, +0.86 and +1.6 GB at 1e5 steps on the three meshes (against
+  +4.5, +9.2 and over 13 GB for its tape), at 2.2-3.3 times the tape's time. repro/pyadjoint_checkpoint_memory.py
+  (4000 steps, 32 x 16, Firedrake 2026.10.0, pyadjoint 2026.10.0, checkpoint_schedules 1.0.4): with Revolve 3 of
+  the tape's 12005 variables hold a state after the derivative (the tape: 8004, plus 8002 adjoint values), yet the
+  peak grows by 12.5 KB/step (tape 47 KB/step). The tape still records three blocks per step (about 5 KB/step of
+  Python objects, by tracemalloc), and the reverse sweep's garbage waits for the collector: gc_timestep_frequency=50
+  brings the growth to 7.5 KB/step at twice the time, with the same gradient to 13 digits. So the time-dependent
+  benchmark should report memory against step count for checkpointed runs too, not assume they are flat.
