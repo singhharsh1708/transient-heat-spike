@@ -151,8 +151,9 @@ try:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
+    CAP = 1e3  # largest value drawn; anything above (or non-finite) is a triangle at the cap
     for what, ylabel, fname in (("mem", "peak resident memory (MB)", "memory.png"),
-                                ("err", "relative error vs discrete exact dJ",
+                                ("err", "relative error vs discrete exact dJ (triangle: > 1e3)",
                                  "gradient_error.png"),
                                 ("time", "gradient wall time (s)", "time.png")):
         fig, axes = plt.subplots(1, len(meshes), figsize=(5 * len(meshes), 4), squeeze=False)
@@ -170,7 +171,13 @@ try:
                         xs.append(s); ys.append(max(abs(d["dJ_uniform"] / discrete(nx, ny, s) - 1), 1e-16))
                     elif what == "time" and d.get("ok") and "warm_s" in d:
                         xs.append(s); ys.append(d["warm_s"])
+                # A blown-up error (backsolve reaches 1e289) breaks log-axis ticks: draw it at the cap
+                over = [i for i, y in enumerate(ys) if what == "err" and not (y <= CAP)]
+                ys = [CAP if i in over else y for i, y in enumerate(ys)]
                 line, = ax.loglog(xs, ys, "o-", label=f"{k[0]} {k[1]}")
+                if over:
+                    ax.loglog([xs[i] for i in over], [CAP] * len(over), "^", color=line.get_color(),
+                              markersize=10)
                 if xk:
                     ax.loglog(xk, yk, "x", color=line.get_color(), markersize=10)
             ax.set_title(f"{nx} x {ny} mesh")
