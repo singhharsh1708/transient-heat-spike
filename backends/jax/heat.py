@@ -4,8 +4,9 @@
 
 Strategies (reverse mode through the time loop):
   tape        plain jax.grad through lax.scan: every step's state is kept, so memory grows with the step count
-  checkpoint  two-level scan, the inner scan wrapped in jax.checkpoint: about sqrt(steps) states are kept and the
-              inner chunks are recomputed on the way back
+  checkpoint  two-level scan, the inner scan wrapped in jax.checkpoint: chunks of c steps, c the largest divisor
+              of steps not above isqrt(steps); about steps / c + c states are kept and each chunk is recomputed
+              once on the way back
 Each step solves (M + dt K) T_{n+1} = M T_n by conjugate gradients (Jacobi preconditioner); jax.scipy's cg is a
 custom_linear_solve, so its derivative is an implicit transposed solve, not a tape of CG iterations.
 """
@@ -75,8 +76,7 @@ def build(p: Problem, steps: int, strategy: str):
         if strategy == "tape":
             T, _ = jax.lax.scan(body, T0, None, length=steps)
         elif strategy == "checkpoint":
-            c = 10 ** int(math.floor(math.log10(steps) / 2)) if steps >= 100 else 1
-            assert steps % c == 0, (steps, c)
+            c = max(d for d in range(1, math.isqrt(steps) + 1) if steps % d == 0)
 
             @jax.checkpoint
             def chunk(T, _):

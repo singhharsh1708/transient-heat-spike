@@ -11,9 +11,12 @@ import pathlib
 import re
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+from spike.problem import Problem, discrete_exact  # noqa: E402
+
 root, out = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
 out.mkdir(parents=True, exist_ok=True)
-CASE = re.compile(r"^(?P<backend>jax|julia|firedrake)-(?P<strategy>[a-z]+)-(?P<nx>\d+)x(?P<ny>\d+)-(?P<steps>\d+)\.json$")
+CASE = re.compile(r"^(?P<backend>jax|julia|firedrake)-(?P<strategy>[a-z-]+)-(?P<nx>\d+)x(?P<ny>\d+)-(?P<steps>\d+)\.json$")
 
 cases, fdchecks, seen = {}, {}, set()
 for f in sorted(root.rglob("*.json")):
@@ -33,7 +36,18 @@ meshes = sorted({(k[2], k[3]) for k in cases})
 
 
 def peak(d):
-    return d.get("external_peak_rss_mb") or d.get("peak_rss_mb")
+    return d.get("external_peak_rss_mb") or d.get("peak_rss_mb") or d.get("sampled_peak_rss_mb")
+
+
+_exact = {}
+
+
+def discrete(nx, ny, steps):
+    """dJ_h/deps of the discrete scheme (dense eigensolve; skipped above 3000 unknowns)."""
+    if (nx, ny, steps) not in _exact:
+        pr = Problem(nx=nx, ny=ny)
+        _exact[(nx, ny, steps)] = discrete_exact(pr, steps)[1] if (nx + 1) * (ny + 1) <= 3000 else None
+    return _exact[(nx, ny, steps)]
 
 
 def mem_cell(d):
@@ -54,7 +68,9 @@ def err(d):
 
 
 lines = ["# mosaic#375 idea 4: transient heat, CPU sweep\n"]
-lines.append("Peak resident memory in MB (in brackets: above the warm-up baseline); failures with the peak reached.\n")
+lines.append("Peak resident memory in MB of the whole process, and in brackets its growth above the peak of a 10-step")
+lines.append("warm-up in the same process (what the measured run needed on top of a compiled process); failures with")
+lines.append("the peak reached. Peaks are high-water marks: growth below the warm-up peak shows as +0.\n")
 for nx, ny in meshes:
     keys = [k for k in sorted(cases) if (k[2], k[3]) == (nx, ny)]
     n_dofs = next((d.get("n_dofs") for k in keys for d in cases[k].values() if d.get("n_dofs")), "?")
@@ -71,10 +87,20 @@ for nx, ny in meshes:
             d = cases[k].get(s)
             cells.append(f"{d['warm_s']:.3g}" if d and d.get("ok") and "warm_s" in d else "-")
         lines.append(f"| {k[0]} | {k[1]} | " + " | ".join(cells) + " |")
-    lines += ["\n**Gradient along uniform conductivity, relative error against the closed form**\n", head, sep]
+    lines += ["\n**Gradient along uniform conductivity, relative error against the exact gradient of the discrete "
+              "scheme** (the differentiation error alone)\n", head, sep]
+    for k in keys:
+        cells = []
+        for s in steps_all:
+            d = cases[k].get(s)
+            ex = discrete(nx, ny, s) if d and d.get("ok") and "dJ_uniform" in d else None
+            cells.append(f"{abs(d['dJ_uniform'] / ex - 1):.1e}" if ex else "-")
+        lines.append(f"| {k[0]} | {k[1]} | " + " | ".join(cells) + " |")
+    lines += ["\n**The same against the closed form of the continuous problem** (includes the mesh's spatial error)\n",
+              head, sep]
     for k in keys:
         lines.append(f"| {k[0]} | {k[1]} | " + " | ".join(
-            f"{e:.2e}" if (e := err(cases[k].get(s))) is not None else "-" for s in steps_all) + " |")
+            f"{e:.1e}" if (e := err(cases[k].get(s))) is not None else "-" for s in steps_all) + " |")
 
 if fdchecks:
     lines += ["\n## Gradient against finite differences of the same backend's forward (16 x 8 mesh, 100 steps)\n",
@@ -87,25 +113,30 @@ if fdchecks:
             lines.append(f"| {b} | {s} | - | - | {d.get('error', 'no result')[:60]} |")
 
 KT = re.compile(r"^kt-(?P<diff>unrolled|implicit)-n(?P<n>\d+)-(?P<steps>\d+)\.json$")
-kt = {}
+kt, kt_ref = {}, {}
 for f in sorted(root.rglob("kt-*.json")):
     if (m := KT.match(f.name)):
         kt[(int(m["steps"]), int(m["n"]), m["diff"])] = json.loads(f.read_text())
+    elif (m := re.match(r"^kt-reference-(\d+)\.json$", f.name)):
+        kt_ref[int(m.group(1))] = json.loads(f.read_text())
 if kt:
+    refcheck = "; ".join(f"{s} steps {abs(r['grad_dir'] / r['fd_dir'] - 1):.0e}" for s, r in sorted(kt_ref.items())
+                         if r.get("ok"))
     lines += ["\n## k(T) follow-on: Newton per step, unrolled vs implicit differentiation (JAX, 16 x 8 mesh)\n",
-              "Errors against the converged implicit gradient (30 Newton iterations, itself checked against central",
-              "differences in the ref_fd_dir field).\n",
+              "Errors against the converged implicit gradient (30 Newton iterations, its own process; against central",
+              f"differences: {refcheck}). Peak MB is the whole process's (dense Newton solves).\n",
               "| steps | Newton iterations | forward J error | unrolled: gradient error, peak MB, s | "
               "implicit: gradient error, peak MB, s |", "|---|---|---|---|---|"]
     for st, n in sorted({(k[0], k[1]) for k in kt}):
         u, i = kt.get((st, n, "unrolled"), {}), kt.get((st, n, "implicit"), {})
+        ref = kt_ref.get(st, {})
 
         def cell(d):
-            if not d.get("ok"):
+            if not d.get("ok") or not ref.get("ok"):
                 return "-"
-            return f"{abs(d['grad_dir'] / d['ref_grad_dir'] - 1):.1e}, {d['peak_rss_mb']:.0f}, {d['warm_s']:.3f}"
+            return f"{abs(d['grad_dir'] / ref['grad_dir'] - 1):.1e}, {peak(d):.0f}, {d['warm_s']:.3f}"
 
-        fj = f"{abs(u['J'] / u['ref_J'] - 1):.1e}" if u.get("ok") else "-"
+        fj = f"{abs(u['J'] / ref['J'] - 1):.1e}" if u.get("ok") and ref.get("ok") else "-"
         lines.append(f"| {st} | {n} | {fj} | {cell(u)} | {cell(i)} |")
 
 text = "\n".join(lines) + "\n"

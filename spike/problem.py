@@ -97,6 +97,28 @@ def assemble_dense(p: Problem, rho: np.ndarray):
     return K[np.ix_(free, free)], M[np.ix_(free, free)]
 
 
+def discrete_exact(p: Problem, steps: int) -> tuple[float, float]:
+    """J_h and dJ_h/deps of the discrete scheme itself, uniform rho = 1, in closed form.
+
+    With K v_i = lam_i M v_i (M-orthonormal v_i) and T0 = sum c_i v_i, backward Euler gives
+    T_N = sum c_i (1 + dt lam_i)^-N v_i, so J_h = sum c_i^2 (1 + dt lam_i)^-2N. Scaling the conductivity by
+    (1 + eps) scales every lam_i, so dJ_h/deps = sum -2N c_i^2 dt lam_i (1 + dt lam_i)^(-2N-1).
+    A backend's gradient compared with this shows its differentiation error alone, without the spatial and time
+    discretisation error that the continuous closed form includes. Dense: practical up to a few thousand unknowns.
+    """
+    from scipy.linalg import eigh
+
+    coords, _, free = mesh(p)
+    K, M = assemble_dense(p, np.ones(p.n_cells))
+    lam, V = eigh(K, M)  # V' M V = I
+    c = V.T @ (M @ initial_temperature(coords, p)[free])
+    dt = p.t_end / steps
+    q = 1.0 + dt * lam
+    J = float(np.sum(c**2 * q ** (-2.0 * steps)))
+    dJ = float(np.sum(-2.0 * steps * c**2 * dt * lam * q ** (-2.0 * steps - 1)))
+    return J, dJ
+
+
 def reference_solve(p: Problem, rho: np.ndarray, steps: int) -> float:
     """Dense numpy backward Euler, for checking the backends on small meshes."""
     coords, _, free = mesh(p)

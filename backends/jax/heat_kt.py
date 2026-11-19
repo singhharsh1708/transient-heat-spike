@@ -12,7 +12,9 @@ Differentiation of that solve (`--diff`):
             so it carries the Newton error
   implicit  jax.lax.custom_root: the implicit function theorem at the iterate reached, -dR/dT^-T dR/drho, which is
             exact at a converged root and approximate otherwise
-The reference is the implicit gradient at 30 Newton iterations, checked against central differences.
+The reference (`--reference`, its own process) is the implicit gradient at 30 Newton iterations, checked against
+central differences. Newton systems are solved densely (LU of the jacfwd Jacobian), which is what the unrolled
+tape stores per iteration; with mosaic's sparse or iterative solvers the memory ratio would differ.
 """
 
 import argparse
@@ -97,7 +99,8 @@ def main():
     ap.add_argument("--steps", type=int, default=200)
     ap.add_argument("--newton", type=int, default=3)
     ap.add_argument("--diff", default="unrolled", choices=["unrolled", "implicit"])
-    ap.add_argument("--reference", action="store_true", help="also compute the 30-iteration implicit reference + FD")
+    ap.add_argument("--reference", action="store_true",
+                    help="compute only the 30-iteration implicit reference and its central-difference check")
     ap.add_argument("--out")
     a = ap.parse_args()
     p = Problem(nx=a.nx, ny=a.ny)
@@ -105,23 +108,28 @@ def main():
     res = {"backend": "jax", "problem": "k(T)", "beta": BETA, "diff": a.diff, "newton": a.newton, "nx": a.nx,
            "ny": a.ny, "steps": a.steps}
     try:
+        d = np.random.default_rng(0).standard_normal(p.n_cells)
+        d /= np.linalg.norm(d)
+        if a.reference:  # in its own process, so it does not count towards a case's memory
+            res.update(diff="reference", newton=30)
+            ref = jax.jit(jax.value_and_grad(build(p, a.steps, 30, "implicit")))
+            rv, rg = ref(rho)
+            rg = np.asarray(rg)
+            res["J"], res["dJ_uniform"], res["grad_dir"] = float(rv), float(rg.sum()), float(rg @ d)
+            f = jax.jit(build(p, a.steps, 30, "implicit"))
+            eps = 1e-5
+            res["fd_dir"] = (float(f(rho + eps * d)) - float(f(rho - eps * d))) / (2 * eps)
+            res["ok"] = True
+            raise StopIteration
         vg = jax.jit(jax.value_and_grad(build(p, a.steps, a.newton, a.diff)))
         t0 = time.perf_counter(); val, g = vg(rho); jax.block_until_ready(g); res["first_s"] = time.perf_counter() - t0
         t0 = time.perf_counter(); jax.block_until_ready(vg(rho)); res["warm_s"] = time.perf_counter() - t0
         g = np.asarray(g)
         res["J"], res["dJ_uniform"] = float(val), float(g.sum())
-        d = np.random.default_rng(0).standard_normal(p.n_cells)
-        d /= np.linalg.norm(d)
         res["grad_dir"] = float(g @ d)
-        if a.reference:
-            ref = jax.jit(jax.value_and_grad(build(p, a.steps, 30, "implicit")))
-            rv, rg = ref(rho)
-            rg = np.asarray(rg)
-            res["ref_J"], res["ref_dJ_uniform"], res["ref_grad_dir"] = float(rv), float(rg.sum()), float(rg @ d)
-            f = jax.jit(build(p, a.steps, 30, "implicit"))
-            eps = 1e-5
-            res["ref_fd_dir"] = (float(f(rho + eps * d)) - float(f(rho - eps * d))) / (2 * eps)
         res["ok"] = True
+    except StopIteration:
+        pass
     except Exception as e:  # noqa: BLE001
         res["ok"] = False
         res["error"] = f"{type(e).__name__}: {str(e)[:500]}"

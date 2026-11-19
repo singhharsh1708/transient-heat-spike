@@ -4,7 +4,10 @@
 #   julia --project=backends/julia backends/julia/heat.jl --nx 32 --ny 16 --steps 1000 --strategy interp --out r.json
 #
 # Strategies (continuous adjoints, each solved by the same integrator with the same fixed step):
-#   interp      InterpolatingAdjoint(checkpointing = true): forward states kept only at checkpoints
+#   interp      InterpolatingAdjoint(checkpointing = true), checkpoints at isqrt(steps) evenly spaced times; it
+#               re-solves each checkpoint interval with the forward algorithm at the solve tolerances, adaptively
+#               (it does not pass on dt / adaptive = false), so its gradient carries that re-solve's error
+#   interp-dense  InterpolatingAdjoint(checkpointing = false): the dense forward solution is kept
 #   quadrature  QuadratureAdjoint: dense forward solution kept, parameter gradient by quadrature
 #   gauss       GaussAdjoint: dense forward solution kept, parameter gradient accumulated in a callback
 #   backsolve   BacksolveAdjoint: forward state re-integrated backwards with the adjoint (ill-posed for diffusion)
@@ -87,13 +90,23 @@ fun = ODEFunction{true}(HeatRHS(); mass_matrix = M, jac = heat_jac!, jac_prototy
 prob = ODEProblem(fun, u0, (0.0, t_end), ones(ncells))
 SENSE = Dict(
     "interp" => InterpolatingAdjoint(checkpointing = true, autojacvec = EnzymeVJP()),
+    "interp-dense" => InterpolatingAdjoint(checkpointing = false, autojacvec = EnzymeVJP()),
     "quadrature" => QuadratureAdjoint(autojacvec = EnzymeVJP()),
     "gauss" => GaussAdjoint(autojacvec = EnzymeVJP()),
     "backsolve" => BacksolveAdjoint(autojacvec = EnzymeVJP()),
 )[strategy]
 
+# The objective needs only T(t_end). For the checkpointed adjoint the saved times are its checkpoints, so they are
+# spread over the run (isqrt of the step count of them); the others save only the end.
+function savetimes()
+    n = round(Int, t_end / DT[])
+    strategy == "interp" || return [t_end]
+    c = max(1, isqrt(n))
+    return collect(range(t_end / c, t_end; length = c))
+end
+
 function J(p; sensealg = SENSE)
-    sol = solve(prob, ImplicitEuler(); p = p, dt = DT[], adaptive = false, saveat = [t_end], save_start = false,
+    sol = solve(prob, ImplicitEuler(); p = p, dt = DT[], adaptive = false, saveat = savetimes(), save_start = false,
         sensealg = sensealg)
     u = sol.u[end]
     return dot(u, M * u)

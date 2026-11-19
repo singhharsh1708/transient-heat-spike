@@ -12,25 +12,33 @@ Slab [0, 2] x [0, 1], cold left face, other faces insulated, conductivity k0 rho
 thermal-mesh), initial temperature the single eigenmode sin(pi x / 4). Then T(x, t) = sin(pi x / 4) exp(-lam t),
 and J = integral of T(t_end)^2 and its derivative along uniform conductivity have closed forms (`spike/problem.py`).
 Every backend uses the same bilinear (Q1) elements, consistent mass and backward Euler with a fixed number of steps
-to t_end, so forward results agree to machine precision and differences come from how the gradient is taken.
+to t_end, so forward results agree (to 1e-11 or better; OrdinaryDiffEq's drifts to 3.5e-12 at 100000 steps) and
+differences come from how the gradient is taken. Besides the continuous closed form, `spike/problem.py` gives the
+exact gradient of the discrete scheme itself (generalized eigenpairs of K and M), so the differentiation error of a
+backend is measured apart from the discretisation error.
 
 ## Backends and strategies
 
 | backend | strategy | what is kept for the reverse sweep |
 |---|---|---|
 | JAX (`backends/jax/heat.py`) | `tape` | every step (plain `jax.grad` through `lax.scan`) |
-| | `checkpoint` | about sqrt(steps) states; chunks recomputed (`jax.checkpoint`) |
+| | `checkpoint` | steps / c + c states, c the largest divisor of steps not above isqrt(steps) (650 at 100000 steps); chunks recomputed (`jax.checkpoint`) |
 | Firedrake + pyadjoint (`backends/firedrake/heat.py`) | `tape` | every step (default tape) |
-| | `checkpoint` | Revolve with sqrt(steps) snapshots (`checkpoint_schedules`) |
-| OrdinaryDiffEq + SciMLSensitivity (`backends/julia/heat.jl`) | `interp` | checkpoints (`InterpolatingAdjoint(checkpointing = true)`) |
-| | `quadrature`, `gauss` | the dense forward solution |
+| | `checkpoint` | Revolve with ceil(sqrt(steps)) snapshots (317 at 100000 steps; `checkpoint_schedules`) |
+| OrdinaryDiffEq + SciMLSensitivity (`backends/julia/heat.jl`) | `interp` | checkpoints at isqrt(steps) times (`InterpolatingAdjoint(checkpointing = true)`); each interval is re-solved adaptively at the solve tolerances, not at the fixed step |
+| | `interp-dense`, `quadrature`, `gauss` | the dense forward solution |
 | | `backsolve` | nothing: the state is integrated backwards (ill-posed for diffusion) |
 
 JAX and pyadjoint differentiate the discrete scheme; SciMLSensitivity's adjoints are continuous adjoints solved at
-the same step, so their gradient differs from the discrete one by O(dt).
+the same step, so their gradient differs from the discrete one by O(dt), except where the checkpointed re-solve
+adds its own error. Linear solves: JAX uses conjugate gradients per step (`jax.scipy.sparse.linalg.cg`, implicit
+derivative), Firedrake one MUMPS factorisation reused for every step (`constant_jacobian`); whether OrdinaryDiffEq
+reuses its factorisation across steps was not checked. Finite-difference checks use a random direction in each
+backend's own cell order, so their values are not comparable across backends; the uniform direction is.
 
 `backends/jax/heat_kt.py` is the follow-on: k = k0 rho (1 + T), Newton per step, `unrolled` (reverse mode through
-the Newton iterations) against `implicit` (`jax.lax.custom_root`), over the number of Newton iterations.
+the Newton iterations) against `implicit` (`jax.lax.custom_root`), over the number of Newton iterations, with dense
+Newton solves; the converged reference runs in its own process.
 
 ## Running
 
@@ -44,4 +52,5 @@ docker run --rm -v "$PWD":/work -w /work firedrakeproject/firedrake-vanilla-defa
 ```
 
 `.github/workflows/spike.yml` runs the whole sweep (10 to 100000 steps, three mesh sizes) on GitHub's CPU runners,
-one process per case, and `spike/summarise.py` turns the results into tables and plots. Results: `results/`.
+one process per case, killed and recorded at 13 GB, and `spike/summarise.py` turns the results into tables and
+plots (the run's `summary` artifact). Saved runs go in `results/`.
