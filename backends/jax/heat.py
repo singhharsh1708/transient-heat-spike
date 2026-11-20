@@ -36,6 +36,12 @@ def peak_rss_mb() -> float:
     return r / 2**20 if sys.platform == "darwin" else r / 2**10  # bytes on macOS, KiB on Linux
 
 
+def device_peak_mb() -> float | None:
+    """The accelerator allocator's peak bytes in use (None on CPU, where memory_stats is not available)."""
+    stats = jax.devices()[0].memory_stats()
+    return stats["peak_bytes_in_use"] / 2**20 if stats and "peak_bytes_in_use" in stats else None
+
+
 def build(p: Problem, steps: int, strategy: str):
     coords, cells, free = mesh(p)
     ke, me = (jnp.asarray(a) for a in element_matrices(p.Lx / p.nx, p.Ly / p.ny))
@@ -114,7 +120,9 @@ def main():
     baseline = peak_rss_mb()
     res = {"backend": "jax", "strategy": a.strategy, "mode": a.mode, "nx": a.nx, "ny": a.ny, "steps": a.steps,
            "n_dofs": int(len(mesh(p)[2])), "exact_J": p.exact_J(), "exact_dJ_uniform": p.exact_dJ_uniform(),
-           "compile_s": compile_s, "baseline_rss_mb": baseline}
+           "compile_s": compile_s, "baseline_rss_mb": baseline, "device": jax.devices()[0].device_kind}
+    if (dev := device_peak_mb()) is not None:
+        res["baseline_device_peak_mb"] = dev
     try:
         if a.mode == "forward":
             f = jax.jit(J)
@@ -140,6 +148,8 @@ def main():
         res["ok"] = False
         res["error"] = f"{type(e).__name__}: {str(e)[:500]}"
     res["peak_rss_mb"] = peak_rss_mb()
+    if (dev := device_peak_mb()) is not None:
+        res["device_peak_mb"] = dev
     print(json.dumps(res))
     if a.out:
         with open(a.out, "w") as fh:

@@ -1,0 +1,16 @@
+{
+  "id": "harshsingh1708/transient-heat-t4",
+  "title": "transient-heat-t4",
+  "code_file": "kaggle_t4.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "machine_shape": "NvidiaTeslaT4",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

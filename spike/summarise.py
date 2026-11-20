@@ -75,7 +75,20 @@ def err(d):
     return abs(d["dJ_uniform"] / d["exact_dJ_uniform"] - 1)
 
 
-lines = ["# mosaic#375 idea 4: transient heat, CPU sweep\n"]
+def dev_cell(d):
+    """Peak accelerator memory (MB) and its growth over the warm-up; failures with what was reached or asked for."""
+    if d is None or "device_peak_mb" not in d:
+        return "-"
+    if not d.get("ok"):
+        if (need := refused_mb(d)) is not None:
+            return f"out of memory: needs {need / 1024:.1f} GB"
+        return f"failed at {d['device_peak_mb'] / 1024:.1f} GB"
+    base = d.get("baseline_device_peak_mb")
+    return f"{d['device_peak_mb']:.0f}" + (f" (+{d['device_peak_mb'] - base:.0f})" if base is not None else "")
+
+
+accel = sorted({d["device"] for v in cases.values() for d in v.values() if d.get("device", "cpu") != "cpu"})
+lines = [f"# mosaic#375 idea 4: transient heat, {', '.join(accel) if accel else 'CPU'} sweep\n"]
 lines.append("Peak resident memory in MB of the whole process, and in brackets its growth above the peak of a 10-step")
 lines.append("warm-up in the same process (what the measured run needed on top of a compiled process); failures with")
 lines.append("the peak reached. Peaks are high-water marks: growth below the warm-up peak shows as +0.\n")
@@ -88,6 +101,11 @@ for nx, ny in meshes:
     lines += ["**Peak memory (MB)**\n", head, sep]
     for k in keys:
         lines.append(f"| {k[0]} | {k[1]} | " + " | ".join(mem_cell(cases[k].get(s)) for s in steps_all) + " |")
+    if any("device_peak_mb" in d for k in keys for d in cases[k].values()):
+        lines += ["\n**Peak device memory (MB)** (the accelerator allocator's peak bytes in use; in brackets its "
+                  "growth over the warm-up)\n", head, sep]
+        for k in keys:
+            lines.append(f"| {k[0]} | {k[1]} | " + " | ".join(dev_cell(cases[k].get(s)) for s in steps_all) + " |")
     lines += ["\n**Gradient time (s)**\n", head, sep]
     for k in keys:
         cells = []
