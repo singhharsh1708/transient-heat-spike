@@ -53,7 +53,8 @@
   (64 x 32), and on 128 x 64 XLA refuses up front (it asks for 26216674456 bytes, 24.4 GB); pyadjoint +4.4 and
   +9.0 GB, killed at 13 GB on 128 x 64. JAX checkpointing stays within +102 MB on every mesh, at 1.6-1.8 times the
   tape's time at 1e5 steps on the two meshes where the tape finished. Gradients of JAX and pyadjoint agree with the
-  exact discrete gradient to 2.1e-11 or better everywhere. (GB here is 1024 MB, as in the tables.)
+  exact discrete gradient to 3e-13 or better everywhere (see the correction below). (GB here is 1024 MB, as in
+  the tables.)
 - pyadjoint's Revolve does not give flat memory: +0.64, +0.84 and +1.6 GB at 1e5 steps on the three meshes
   (against +4.4, +9.0 and over 13 GB for its tape), at 2.2-3.3 times the tape's time, with pyadjoint's default
   settings; from 1e4 to 1e5 steps it grows 6.5, 8.4 and 15.6 KB/step. repro/pyadjoint_checkpoint_memory.py
@@ -81,3 +82,23 @@
 - Times for Revolve without periodic collection against gc_timestep_frequency = 50
   (repro/pyadjoint_checkpoint_memory.py, this laptop under load): 10 s against 14 s and 46 s against 58 s at 1000
   and 4000 steps on 128 x 64; 5 s against 10 s and 21 s against 40 s on 32 x 16.
+- T4 (Kaggle, results/t4-run-1). Run 1 failed in 2 minutes: the image's jax-cuda13 0.11.1 plugin and the
+  installed jax-cuda12 0.12.1 one both registered "cuda", JAX 0.12.1 discovers plugins from a set so each process
+  started whichever won, and the old one rejected the new client option memory_fraction_policy (7 of 13 cases).
+  Run 2 removes the image's plugin and probes with a real tiny case first. Result: device memory of the tape equals
+  XLA's memory analysis of the compiled gradient to 1.1 MB; tape at 128 x 64, 1e5 steps refused (24.42 GiB against
+  a 14.6 GB allocator limit); checkpointing at most 94 MB of temporaries; gradients equal to the CPU CI run's to
+  8.4e-14 relative. So for the growing tapes XLA's memory analysis, which works on any platform without running
+  the case, predicted the GPU memory; whether it does for checkpointed cases is not measured (they stay under the
+  96 MB device floor).
+- Correction to the gradient and J errors above and on 2026-11-19: the "exact discrete" reference in
+  spike/problem.py was itself up to 2.1e-11 off at 1e5 steps. It raised the rounded 1 + dt lam to the power -2N,
+  which amplifies that rounding by 2N, and the dense cross-check used the same formula, so the two agreed; on
+  128 x 64 eigh's lowest eigenvalue was also about 1e-12 off, about 2e-12 in J at every step count. Against a
+  40-digit evaluation of the same closed form, JAX's gradients (CPU and T4) are within 2.3e-13 and pyadjoint's
+  within 3.0e-13, and JAX's forward J within 2.7e-13, so the "2e-11 at 1e5 steps" (and the "forward J drifts by the
+  same amount" of 2026-11-19) was the reference's error, not the solvers'. JAX's gradient error is about 5e-15,
+  3e-14 and 1.3e-13 on the three meshes up to 1000 steps and at most 2.3e-13 (64 x 32, tape, 1e5 steps); its J error
+  depends on the mesh, not the step count (about 2e-14, 7e-14, 2.6e-13). discrete_exact now uses the single-mode
+  closed form (the nodal sin(pi x / 2 Lx) is an exact eigenvector of the 1D pencil) with exp(-2N log1p(dt lam1)):
+  within 4.5e-16 of the 40-digit value on every mesh and step count here.

@@ -102,26 +102,28 @@ def discrete_exact(p: Problem, steps: int) -> tuple[float, float]:
 
     The Q1 matrices are tensor products, K = k0 (Kx (x) My + Mx (x) Ky) and M = Mx (x) My, and Ky annihilates
     constants. The initial temperature is a function of x alone, f (x) 1, so every backward Euler step stays of that
-    form and reduces to (Mx + dt k0 Kx) f_{n+1} = Mx f_n, with J = Ly f_N' Mx f_N. The 1D problem then has the
-    eigenvector closed form below (discrete_exact_dense does the same on the full 2D matrices, as a cross-check).
-    """
-    from scipy.linalg import eigh
+    form and reduces to (Mx + dt k0 Kx) f_{n+1} = Mx f_n, with J = Ly f_N' Mx f_N. The nodal values of
+    sin(pi x / 2 Lx) are an exact eigenvector of that 1D pencil (cold left end, insulated right end), with
+    eigenvalue lam1 = (6 k0 / h^2) (1 - cos th) / (2 + cos th), th = pi / (2 nx), so
 
+        J_h = Ly |f0|_M^2 (1 + dt lam1)^-2N,    dJ_h/deps = -2N dt lam1 J_h / (1 + dt lam1).
+
+    The power is taken as exp(-2N log1p(dt lam1)), since raising the rounded 1 + dt lam1 to -2N would amplify its
+    rounding by 2N, and lam1 in closed form, since a numerical eigensolver's is about 1e-12 off on fine meshes.
+    discrete_exact_dense solves the full 2D eigenproblem as a cross-check.
+    """
     h, n = p.Lx / p.nx, p.nx + 1
-    Kx, Mx = np.zeros((n, n)), np.zeros((n, n))
+    Mx = np.zeros((n, n))
     for e in range(p.nx):
         i = [e, e + 1]
-        Kx[np.ix_(i, i)] += p.k0 / h * np.array([[1.0, -1.0], [-1.0, 1.0]])
         Mx[np.ix_(i, i)] += h / 6 * np.array([[2.0, 1.0], [1.0, 2.0]])
-    Kx, Mx = Kx[1:, 1:], Mx[1:, 1:]  # x = 0 held at zero
-    x = np.linspace(0.0, p.Lx, n)[1:]
-    lam, V = eigh(Kx, Mx)
-    c = V.T @ (Mx @ np.sin(np.pi * x / (2 * p.Lx)))
-    dt = p.t_end / steps
-    q = 1.0 + dt * lam
-    J = p.Ly * float(np.sum(c**2 * q ** (-2.0 * steps)))
-    dJ = p.Ly * float(np.sum(-2.0 * steps * c**2 * dt * lam * q ** (-2.0 * steps - 1)))
-    return J, dJ
+    Mx = Mx[1:, 1:]  # x = 0 held at zero
+    f0 = np.sin(np.pi * np.linspace(0.0, p.Lx, n)[1:] / (2 * p.Lx))
+    th = np.pi / (2 * p.nx)
+    lam1 = 6 * p.k0 / h**2 * (2 * np.sin(th / 2) ** 2) / (2 + np.cos(th))  # 1 - cos th without cancellation
+    a = p.t_end / steps * lam1
+    J = p.Ly * float(f0 @ Mx @ f0) * np.exp(-2.0 * steps * np.log1p(a))
+    return float(J), float(-2.0 * steps * a / (1.0 + a) * J)
 
 
 def discrete_exact_dense(p: Problem, steps: int) -> tuple[float, float]:
@@ -138,9 +140,9 @@ def discrete_exact_dense(p: Problem, steps: int) -> tuple[float, float]:
     lam, V = eigh(K, M)  # V' M V = I
     c = V.T @ (M @ initial_temperature(coords, p)[free])
     dt = p.t_end / steps
-    q = 1.0 + dt * lam
-    J = float(np.sum(c**2 * q ** (-2.0 * steps)))
-    dJ = float(np.sum(-2.0 * steps * c**2 * dt * lam * q ** (-2.0 * steps - 1)))
+    a = dt * lam
+    J = float(np.sum(c**2 * np.exp(-2.0 * steps * np.log1p(a))))
+    dJ = float(np.sum(-2.0 * steps * c**2 * a * np.exp((-2.0 * steps - 1) * np.log1p(a))))
     return J, dJ
 
 
@@ -167,7 +169,7 @@ if __name__ == "__main__":
     p = Problem(nx=16, ny=8)
     for steps in (10, 1000, 100000):  # the separable oracle against the dense 2D one
         a, b = discrete_exact(p, steps), discrete_exact_dense(p, steps)
-        assert abs(a[0] / b[0] - 1) < 1e-10 and abs(a[1] / b[1] - 1) < 1e-10, (steps, a, b)
+        assert abs(a[0] / b[0] - 1) < 1e-12 and abs(a[1] / b[1] - 1) < 1e-12, (steps, a, b)
     for steps in (10, 100, 1000):
         Jh = reference_solve(p, np.ones(p.n_cells), steps)
         print(f"steps {steps:5d}  J_h {Jh:.6f}  exact {p.exact_J():.6f}  rel err {abs(Jh / p.exact_J() - 1):.2e}")

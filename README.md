@@ -59,7 +59,8 @@ plots (the run's `summary` artifact). Saved runs go in `results/`.
 
 ## Results
 
-From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md); notes in docs/log.md; GB = 1024 MB):
+From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md)) and a T4 run
+([results/t4-run-1](results/t4-run-1/README.md)); notes in docs/log.md; GB = 1024 MB:
 
 - A full tape grows linearly with the step count: at 1e5 steps JAX needs +1.5 GB on 32 x 16 and +6.1 GB on
   64 x 32 and refuses 128 x 64 up front (it asks for 24.4 GB); pyadjoint needs +4.4 and +9.0 GB and is killed at
@@ -69,7 +70,12 @@ From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md); notes
   time, default settings): its tape keeps three blocks per step (about 5-6 KB/step on both meshes measured), and
   garbage from the recomputation, which grows with the mesh, waits for the cycle collector; gc_timestep_frequency
   removes the second part at 1.2-2 times the time (repro/pyadjoint_checkpoint_memory.py, docs/log.md).
-- JAX and pyadjoint match the exact discrete gradient to 2.1e-11 or better; SciMLSensitivity's continuous adjoints
+- On a T4 GPU a growing JAX tape's device memory is what XLA's memory analysis of the compiled gradient predicts
+  (to 1.1 MB; 6254.7 MB against 6254.4 MB at 64 x 32 and 1e5 steps), 128 x 64 at 1e5 steps is refused (it asks for
+  24.4 GB, the allocator's limit is 14.6 GB), checkpointing needs at most 94 MB of temporaries by XLA's analysis,
+  and gradients equal the CPU run's to 8.4e-14.
+- JAX and pyadjoint match the exact gradient of the discrete scheme to 3e-13 or better at every step count and mesh
+  (JAX 2.3e-13 including the T4, pyadjoint 3.0e-13); SciMLSensitivity's continuous adjoints
   are O(dt) off (1e-5 to 2e-5 at 1e5 steps), and BacksolveAdjoint is 89-100 % off, except at 1e5 steps on 32 x 16,
   where it reaches 5.3e289.
 - k(T): with one Newton iteration per step, unrolled differentiation is 7-22 times closer to the converged gradient

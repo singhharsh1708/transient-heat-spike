@@ -39,10 +39,10 @@ the peak reached. Peaks are high-water marks: growth below the warm-up peak show
 
 | backend | strategy | 10 steps | 100 steps | 1000 steps | 10000 steps | 100000 steps |
 |---|---|---|---|---|---|---|
-| firedrake | checkpoint | 1.1e-14 | 3.6e-14 | 7.4e-15 | 1.4e-12 | 2.1e-11 |
-| firedrake | tape | 1.1e-14 | 3.6e-14 | 7.4e-15 | 1.4e-12 | 2.1e-11 |
-| jax | checkpoint | 2.2e-14 | 4.2e-14 | 5.1e-15 | 1.3e-12 | 2.1e-11 |
-| jax | tape | 2.2e-14 | 4.2e-14 | 3.9e-15 | 1.3e-12 | 2.1e-11 |
+| firedrake | checkpoint | 5.8e-15 | 2.2e-16 | 1.3e-15 | 1.8e-14 | 1.3e-14 |
+| firedrake | tape | 5.8e-15 | 2.2e-16 | 1.3e-15 | 1.8e-14 | 1.3e-14 |
+| jax | checkpoint | 5.6e-15 | 6.7e-15 | 3.6e-15 | 2.0e-14 | 7.1e-14 |
+| jax | tape | 5.6e-15 | 6.7e-15 | 4.7e-15 | 2.7e-14 | 1.3e-15 |
 | julia | backsolve | 8.9e-01 | 9.8e-01 | 9.9e-01 | 1.0e+00 | 5.3e+289 |
 | julia | gauss | 1.0e-01 | 1.0e-02 | 1.0e-03 | 1.0e-04 | 1.0e-05 |
 | julia | interp | 9.5e-02 | 1.0e-02 | 2.1e-03 | 2.1e-04 | 2.1e-05 |
@@ -97,10 +97,10 @@ the peak reached. Peaks are high-water marks: growth below the warm-up peak show
 
 | backend | strategy | 10 steps | 100 steps | 1000 steps | 10000 steps | 100000 steps |
 |---|---|---|---|---|---|---|
-| firedrake | checkpoint | 1.0e-13 | 1.0e-13 | 1.1e-13 | 1.7e-12 | 1.1e-11 |
-| firedrake | tape | 1.0e-13 | 1.0e-13 | 1.1e-13 | 1.7e-12 | 1.1e-11 |
-| jax | checkpoint | 5.5e-14 | 8.3e-14 | 8.4e-14 | 1.7e-12 | 1.2e-11 |
-| jax | tape | 5.5e-14 | 8.3e-14 | 8.4e-14 | 1.7e-12 | 1.1e-11 |
+| firedrake | checkpoint | 1.2e-14 | 1.2e-14 | 1.6e-15 | 1.0e-14 | 2.1e-13 |
+| firedrake | tape | 1.2e-14 | 1.2e-14 | 1.6e-15 | 1.0e-14 | 2.1e-13 |
+| jax | checkpoint | 3.5e-14 | 3.2e-14 | 3.2e-14 | 2.2e-14 | 6.0e-15 |
+| jax | tape | 3.5e-14 | 3.2e-14 | 3.2e-14 | 2.8e-14 | 1.8e-13 |
 | julia | backsolve | 1.0e+00 | 9.8e-01 | 1.0e+00 | 1.0e+00 | 1.0e+00 |
 | julia | gauss | 1.0e-01 | 1.0e-02 | 1.0e-03 | 1.0e-04 | 1.0e-05 |
 | julia | interp | 9.5e-02 | 1.4e-02 | 2.1e-03 | 2.1e-04 | 2.1e-05 |
@@ -145,10 +145,10 @@ the peak reached. Peaks are high-water marks: growth below the warm-up peak show
 
 | backend | strategy | 10 steps | 100 steps | 1000 steps | 10000 steps | 100000 steps |
 |---|---|---|---|---|---|---|
-| firedrake | checkpoint | 1.3e-12 | 1.5e-12 | 1.4e-12 | 3.6e-12 | 1.7e-11 |
-| firedrake | tape | 1.3e-12 | 1.5e-12 | 1.4e-12 | 3.6e-12 | - |
-| jax | checkpoint | 1.5e-12 | 1.7e-12 | 1.5e-12 | 3.7e-12 | 1.7e-11 |
-| jax | tape | 1.5e-12 | 1.7e-12 | 1.5e-12 | 3.7e-12 | - |
+| firedrake | checkpoint | 7.4e-14 | 1.0e-14 | 4.7e-15 | 4.6e-15 | 3.0e-13 |
+| firedrake | tape | 7.4e-14 | 1.0e-14 | 4.7e-15 | 4.6e-15 | - |
+| jax | checkpoint | 1.3e-13 | 1.3e-13 | 1.3e-13 | 1.3e-13 | 1.3e-13 |
+| jax | tape | 1.3e-13 | 1.3e-13 | 1.3e-13 | 1.2e-13 | - |
 
 **The same against the closed form of the continuous problem** (includes the mesh's spatial error)
 
