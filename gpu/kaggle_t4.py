@@ -33,25 +33,64 @@ OUT.mkdir(parents=True, exist_ok=True)
 CODE = pathlib.Path(tempfile.mkdtemp()) / "spike"
 
 
-def sh(cmd: str) -> str:
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+def sh(cmd: str, env: dict | None = None) -> str:
+    try:
+        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=600, env=env)
+    except subprocess.TimeoutExpired:
+        return f"timeout: {cmd}"
     return (r.stdout + r.stderr[-2000:]).strip()
 
 
-def jax_platform() -> str:
-    return sh(f"{sys.executable} -c \"import jax; print(jax.__version__, jax.devices()[0].platform)\"")
+def jax_platform(env: dict | None = None) -> str:
+    """JAX's version and platform after a small computation (stdout first), then any warnings JAX printed."""
+    return sh(f"{sys.executable} -c \"import jax, jax.numpy as jnp; jnp.ones(4).sum().block_until_ready(); "
+              f"print(jax.__version__, jax.devices()[0].platform)\"", env)
+
+
+PLUGIN_ERRORS = ("plugin configuration error", "is not compatible with the installed jaxlib")
+
+
+def jax_ok() -> bool:
+    """Whether the pinned JAX runs a real tiny case on the GPU (gather, scatter, cg, scan, checkpoint, FD)."""
+    probe_env = {**os.environ, "JAX_PLATFORMS": "cuda", "CUDA_VISIBLE_DEVICES": "0"}  # as the cases run
+    head = jax_platform(probe_env)
+    try:
+        r = subprocess.run([sys.executable, str(CODE / "backends/jax/heat.py"), "--nx", "8", "--ny", "4", "--steps",
+                            "10", "--strategy", "checkpoint", "--fd"], capture_output=True, text=True,
+                           env=probe_env, timeout=600)
+        code, out, err = r.returncode, r.stdout, r.stderr
+    except subprocess.TimeoutExpired:
+        code, out, err = "timeout", "", ""
+    try:
+        rec = json.loads(out.strip().splitlines()[-1])
+    except (IndexError, ValueError):
+        rec = {}
+    agrees = rec.get("fd_dir") and abs(rec.get("grad_dir", 0) / rec["fd_dir"] - 1) < 1e-6
+    ok = (head.partition("\n")[0] == "0.12.1 gpu"
+          and not any(e in (head + err).lower() for e in PLUGIN_ERRORS)
+          and code == 0 and rec.get("ok") and rec.get("device", "cpu") != "cpu" and agrees)
+    if not ok:
+        print("JAX probe rejected:", head[:1500], f"exit {code}", rec.get("error") or out[-500:], err[-1500:],
+              flush=True)
+    return bool(ok)
+
+
+def pip(*args: str) -> None:
+    subprocess.run([sys.executable, "-m", "pip", *args], check=False)
 
 
 subprocess.run(["git", "clone", "-q", REPO, str(CODE)], check=True)
 subprocess.run(["git", "-C", str(CODE), "checkout", "-q", COMMIT], check=True)
 
-# JAX with CUDA: the version CI pins (same XLA as the CPU tables); if that cannot be installed, the image's own,
-# else the latest.
+# JAX with CUDA, the version CI pins (same XLA as the CPU tables), with exactly one CUDA plugin. The Kaggle image
+# ships a CUDA 13 plugin of an older JAX; with a second plugin installed beside it, each process starts whichever
+# registers first, and the old one rejects the new client's options. CUDA 12 first (its 0.12.1 build ran on this
+# T4 and driver), CUDA 13 if that fails; the other major's plugin is removed each time.
 if not SMOKE:
-    for pkg in ("jax[cuda12]==0.12.1", None, "jax[cuda12]"):
-        if pkg:
-            subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-U", pkg], check=False)
-        if jax_platform().partition("\n")[0].endswith("gpu"):  # stdout first; stderr may follow
+    for want, drop in (("12", "13"), ("13", "12")):
+        pip("uninstall", "-q", "-y", f"jax-cuda{drop}-plugin", f"jax-cuda{drop}-pjrt")
+        pip("install", "-q", "-U", f"jax[cuda{want}]==0.12.1")
+        if jax_ok():
             break
     else:
         sys.exit(f"no GPU JAX: {jax_platform()}")
@@ -60,6 +99,7 @@ env = {
     "commit": sh(f"git -C {CODE} rev-parse HEAD"),
     "gpus": sh("nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader"),
     "jax": jax_platform(),
+    "jax_packages": sh(f"{sys.executable} -m pip list 2>/dev/null | grep -i -E 'jax|nvidia'"),
     "python": sys.version.split()[0],
 }
 (WORK / "environment.json").write_text(json.dumps(env, indent=1))
