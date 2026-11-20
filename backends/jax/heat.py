@@ -36,10 +36,22 @@ def peak_rss_mb() -> float:
     return r / 2**20 if sys.platform == "darwin" else r / 2**10  # bytes on macOS, KiB on Linux
 
 
-def device_peak_mb() -> float | None:
-    """The accelerator allocator's peak bytes in use (None on CPU, where memory_stats is not available)."""
+def device_stats_mb(key: str) -> float | None:
+    """An accelerator allocator statistic in MB, e.g. its peak bytes in use (None on CPU, which has no stats)."""
     stats = jax.devices()[0].memory_stats()
-    return stats["peak_bytes_in_use"] / 2**20 if stats and "peak_bytes_in_use" in stats else None
+    return stats[key] / 2**20 if stats and key in stats else None
+
+
+def compile_with_analysis(fn, x, res: dict):
+    """Compile fn at x and record XLA's memory analysis of it, which holds even when the run then fails."""
+    t0 = time.perf_counter()
+    exe = jax.jit(fn).lower(x).compile()
+    res["measured_compile_s"] = time.perf_counter() - t0
+    ma = exe.memory_analysis()
+    for name in ("temp", "argument", "output"):
+        if (v := getattr(ma, f"{name}_size_in_bytes", None)) is not None:
+            res[f"xla_{name}_mb"] = v / 2**20
+    return exe
 
 
 def build(p: Problem, steps: int, strategy: str):
@@ -121,16 +133,17 @@ def main():
     res = {"backend": "jax", "strategy": a.strategy, "mode": a.mode, "nx": a.nx, "ny": a.ny, "steps": a.steps,
            "n_dofs": int(len(mesh(p)[2])), "exact_J": p.exact_J(), "exact_dJ_uniform": p.exact_dJ_uniform(),
            "compile_s": compile_s, "baseline_rss_mb": baseline, "device": jax.devices()[0].device_kind}
-    if (dev := device_peak_mb()) is not None:
+    if (dev := device_stats_mb("peak_bytes_in_use")) is not None:
         res["baseline_device_peak_mb"] = dev
+        res["device_limit_mb"] = device_stats_mb("bytes_limit")
     try:
         if a.mode == "forward":
-            f = jax.jit(J)
+            f = compile_with_analysis(J, rho, res)
             t0 = time.perf_counter(); val = float(f(rho)); res["first_s"] = time.perf_counter() - t0
             t0 = time.perf_counter(); f(rho).block_until_ready(); res["warm_s"] = time.perf_counter() - t0
             res["J"] = val
         else:
-            vg = jax.jit(jax.value_and_grad(J))
+            vg = compile_with_analysis(jax.value_and_grad(J), rho, res)
             t0 = time.perf_counter(); val, g = vg(rho); g = np.asarray(g); res["first_s"] = time.perf_counter() - t0
             t0 = time.perf_counter(); jax.block_until_ready(vg(rho)); res["warm_s"] = time.perf_counter() - t0
             res["J"] = float(val)
@@ -148,7 +161,7 @@ def main():
         res["ok"] = False
         res["error"] = f"{type(e).__name__}: {str(e)[:500]}"
     res["peak_rss_mb"] = peak_rss_mb()
-    if (dev := device_peak_mb()) is not None:
+    if (dev := device_stats_mb("peak_bytes_in_use")) is not None:
         res["device_peak_mb"] = dev
     print(json.dumps(res))
     if a.out:

@@ -50,9 +50,14 @@ def discrete(nx, ny, steps):
 
 
 def refused_mb(d):
-    """The size XLA asked for when it refused a run up front (it never reached that peak), else None."""
-    m = re.search(r"Out of memory allocating (\d+) bytes", str(d.get("error", "")))
-    return int(m.group(1)) / 2**20 if m else None
+    """The size XLA asked for when it refused a run up front (it never reached that peak), else None.
+
+    CPU: "Out of memory allocating 26216674456 bytes"; GPU: "Out of memory while trying to allocate 24.42GiB".
+    """
+    m = re.search(r"Out of memory (?:allocating|while trying to allocate) ([\d.]+) ?(bytes|B|KiB|MiB|GiB|TiB)",
+                  str(d.get("error", "")))
+    shift = {"bytes": 0, "B": 0, "KiB": 10, "MiB": 20, "GiB": 30, "TiB": 40}
+    return float(m.group(1)) * 2 ** shift[m.group(2)] / 2**20 if m else None
 
 
 def mem_cell(d):
@@ -83,8 +88,11 @@ def dev_cell(d):
         if (need := refused_mb(d)) is not None:
             return f"out of memory: needs {need / 1024:.1f} GB"
         return f"failed at {d['device_peak_mb'] / 1024:.1f} GB"
+    def mb(v):  # three figures for the small cases, whole MB above 100
+        return f"{v:.0f}" if abs(v) >= 100 else f"{v:.3g}"
+
     base = d.get("baseline_device_peak_mb")
-    return f"{d['device_peak_mb']:.0f}" + (f" (+{d['device_peak_mb'] - base:.0f})" if base is not None else "")
+    return mb(d["device_peak_mb"]) + (f" (+{mb(d['device_peak_mb'] - base)})" if base is not None else "")
 
 
 accel = sorted({d["device"] for v in cases.values() for d in v.values() if d.get("device", "cpu") != "cpu"})
@@ -180,7 +188,9 @@ try:
     import matplotlib.pyplot as plt
 
     CAP = 1e3  # largest value drawn; anything above (or non-finite) is a triangle at the cap
-    for what, ylabel, fname in (("mem", "peak resident memory (MB)", "memory.png"),
+    on_device = any("device_peak_mb" in d for v in cases.values() for d in v.values())  # GPU run: plot device memory
+    for what, ylabel, fname in (("mem", "peak device memory (MB)" if on_device else "peak resident memory (MB)",
+                                 "memory.png"),
                                 ("err", "relative error vs discrete exact dJ (triangle: > 1e3)",
                                  "gradient_error.png"),
                                 ("time", "gradient wall time (s)", "time.png")):
@@ -193,7 +203,8 @@ try:
                 xs, ys, xk, yk = [], [], [], []
                 for s, d in sorted(cases[k].items()):
                     if what == "mem":
-                        v = refused_mb(d) or peak(d)  # a refusal is drawn at the size it asked for
+                        # a refusal is drawn at the size it asked for
+                        v = refused_mb(d) or (d.get("device_peak_mb") if on_device else peak(d))
                         (xs if d.get("ok") else xk).append(s)
                         (ys if d.get("ok") else yk).append(v if v else math.nan)
                     elif what == "err" and d.get("ok") and "dJ_uniform" in d:
