@@ -80,6 +80,9 @@ From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md)) and a
   where it reaches 5.3e289.
 - k(T): with one Newton iteration per step, unrolled differentiation is 7-22 times closer to the converged gradient
   than implicit differentiation; from three iterations both agree with it to 2.1e-14 or better.
+  Firedrake (pyadjoint: hand-written Newton on the tape against a NonlinearVariationalSolver) gives the same J and
+  gradients to 1e-14 ([results/kt-firedrake-local](results/kt-firedrake-local/README.md)); at two iterations which
+  one is closer depends on the case.
 
 Separately, repro/sciml_checkpoint_resolve.jl shows that SciMLSensitivity's checkpointed InterpolatingAdjoint
 re-solves each checkpoint interval adaptively, ignoring a fixed dt, so its error has a floor set by the re-solve's

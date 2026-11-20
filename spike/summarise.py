@@ -183,6 +183,36 @@ if kt:
         fj = f"{abs(u['J'] / ref['J'] - 1):.1e}" if u.get("ok") and ref.get("ok") else "-"
         lines.append(f"| {st} | {n} | {fj} | {cell(u)} | {cell(i)} |")
 
+KTF = re.compile(r"^kt-firedrake-(?P<diff>unrolled|implicit|reference)(?:-n(?P<n>\d+))?-(?P<steps>\d+)\.json$")
+ktf = {}
+for f in sorted(root.rglob("kt-firedrake-*.json")):
+    if (m := KTF.match(f.name)):
+        ktf[(int(m["steps"]), int(m["n"] or 30), m["diff"])] = json.loads(f.read_text())
+if ktf:
+    pairs = []
+    for (st, n, df), d in ktf.items():
+        twin = kt_ref.get(st, {}) if df == "reference" else kt.get((st, n, df), {})
+        if d.get("ok") and twin.get("ok") and "grad_dir" in d and "grad_dir" in twin:
+            pairs.append(max(abs(d[k] / twin[k] - 1) for k in ("J", "dJ_uniform", "grad_dir")))
+    lines += ["\n## k(T) on Firedrake (pyadjoint): the same scheme, against the JAX records\n",
+              "Errors of the gradient along the JAX table's random direction against Firedrake's own converged "
+              "gradient (against central differences: " + "; ".join(
+                  f"{st} steps {abs(d['grad_dir'] / d['fd_dir'] - 1):.0e}" for (st, _, df), d in sorted(ktf.items())
+                  if df == "reference" and d.get("ok") and "fd_dir" in d) + ")." + (f" Over the {len(pairs)} cases both completed, J, the gradient along uniform "
+                             f"conductivity and along that direction agree with JAX's to {max(pairs):.1e} relative."
+                             if pairs else "") + "\n",
+              "| steps | Newton iterations | unrolled | implicit | implicit / unrolled |", "|---|---|---|---|---|"]
+    for st, n in sorted({(k[0], k[1]) for k in ktf if k[2] != "reference"}):
+        ref = ktf.get((st, 30, "reference"), {})
+        errs = []
+        for df in ("unrolled", "implicit"):
+            d = ktf.get((st, n, df), {})
+            ok = d.get("ok") and ref.get("ok") and "grad_dir" in d and "grad_dir" in ref
+            errs.append(abs(d["grad_dir"] / ref["grad_dir"] - 1) if ok else None)
+        ratio = f"{errs[1] / errs[0]:.3g}" if None not in errs and errs[0] > 0 else "-"
+        lines.append(f"| {st} | {n} | " + " | ".join(f"{e:.1e}" if e is not None else "-" for e in errs)
+                     + f" | {ratio} |")
+
 text = "\n".join(lines) + "\n"
 (out / "summary.md").write_text(text)
 print(text)
@@ -195,11 +225,10 @@ try:
 
     CAP = 1e3  # largest value drawn; anything above (or non-finite) is a triangle at the cap
     on_device = any("device_peak_mb" in d for v in cases.values() for d in v.values())  # GPU run: plot device memory
-    for what, ylabel, fname in (("mem", "peak device memory (MB)" if on_device else "peak resident memory (MB)",
-                                 "memory.png"),
-                                ("err", "relative error vs discrete exact dJ (triangle: > 1e3)",
-                                 "gradient_error.png"),
-                                ("time", "gradient wall time (s)", "time.png")):
+    plots = (("mem", "peak device memory (MB)" if on_device else "peak resident memory (MB)", "memory.png"),
+             ("err", "relative error vs discrete exact dJ (triangle: > 1e3)", "gradient_error.png"),
+             ("time", "gradient wall time (s)", "time.png"))
+    for what, ylabel, fname in plots if meshes else ():  # a folder of k(T) records only has no sweep to plot
         fig, axes = plt.subplots(1, len(meshes), figsize=(5 * len(meshes) + 2, 4), squeeze=False,
                                  layout="constrained")
         for ax, (nx, ny) in zip(axes[0], meshes):

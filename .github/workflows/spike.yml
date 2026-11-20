@@ -152,8 +152,38 @@ jobs:
           name: kt
           path: out/
 
+  kt-firedrake:
+    name: "k(T) follow-on on Firedrake: unrolled vs implicit Newton"
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    container:
+      image: firedrakeproject/firedrake-vanilla-default:2026.10.0
+      options: --user root
+    env:
+      PETSC_OPTIONS: "-options_left 0"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sweep
+        shell: bash
+        run: |
+          mkdir -p out
+          for st in 10 50 200; do
+            python3 spike/run_case.py "out/kt-firedrake-reference-$st.json" 240 -- \
+              python3 backends/firedrake/heat_kt.py --nx "$FD_NX" --ny "$FD_NY" --steps "$st" --reference
+            for n in 1 2 3 5; do for df in unrolled implicit; do
+              python3 spike/run_case.py "out/kt-firedrake-$df-n$n-$st.json" 240 -- \
+                python3 backends/firedrake/heat_kt.py --nx "$FD_NX" --ny "$FD_NY" --steps "$st" --newton "$n" --diff "$df"
+            done; done
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kt-firedrake
+          path: out/
+
   summary:
-    needs: [jax, julia, firedrake, kt]
+    needs: [jax, julia, firedrake, kt, kt-firedrake]
     if: always()
     runs-on: ubuntu-latest
     steps:

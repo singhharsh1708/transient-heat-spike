@@ -102,3 +102,12 @@
   depends on the mesh, not the step count (about 2e-14, 7e-14, 2.6e-13). discrete_exact now uses the single-mode
   closed form (the nodal sin(pi x / 2 Lx) is an exact eigenvector of the 1D pencil) with exp(-2N log1p(dt lam1)):
   within 4.5e-16 of the 40-digit value on every mesh and step count here.
+- k(T) on Firedrake (backends/firedrake/heat_kt.py): the JAX scheme in UFL, with the cell average of T through
+  cell_avg (on a bilinear rectangle the mean of the nodal values, as in JAX); unrolled = Newton iterations written
+  out as taped linear solves, implicit = a NonlinearVariationalSolver forced to take exactly n iterations
+  (snes_convergence_test skip), which pyadjoint differentiates by the implicit function theorem. All 27 cases agree
+  with the JAX records to 1e-14 (J, and the gradient along uniform conductivity and along the JAX random direction
+  mapped to Firedrake's cell order), so the unrolled-vs-implicit result is the scheme's, not one AD system's: 7-22
+  times closer at one Newton iteration, and at two it depends on the case, as with JAX. Measured along uniform
+  conductivity alone the two-iteration ratios are 0.7 at every step count, so the direction matters there. Local run
+  in results/kt-firedrake-local; CI job kt-firedrake.
