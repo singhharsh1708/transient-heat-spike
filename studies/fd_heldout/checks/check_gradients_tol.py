@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 here = Path(__file__).resolve().parent
-out = subprocess.run([sys.executable, "-B", str(here / "verify_gradients.py")], capture_output=True, text=True,
+out = subprocess.run([sys.executable, "-B", str(here / "verify_gradients.py")], stdout=subprocess.PIPE, text=True,
                      check=True, cwd=here).stdout
 lines = out.strip().splitlines()
 complex_step = [line for line in lines if line.startswith("complex-step")]
