@@ -22,7 +22,7 @@ exact gradient of the discrete scheme itself (the scheme separates into a 1D eig
 | backend | strategy | what is kept for the reverse sweep |
 |---|---|---|
 | JAX (`backends/jax/heat.py`) | `tape` | every step (plain `jax.grad` through `lax.scan`) |
-| | `checkpoint` | steps / c + c states, c the largest divisor of steps not above isqrt(steps) (650 at 100000 steps); chunks recomputed (`jax.checkpoint`) |
+| | `checkpoint` | steps / c + c states, c the largest divisor of steps not above isqrt(steps) (650 at 100000 steps; for a prime step count c = 1 and every step is stored, as with the tape); chunks recomputed (`jax.checkpoint`) |
 | Firedrake + pyadjoint (`backends/firedrake/heat.py`) | `tape` | every step (default tape) |
 | | `checkpoint` | Revolve with ceil(sqrt(steps)) snapshots (317 at 100000 steps; `checkpoint_schedules`) |
 | OrdinaryDiffEq + SciMLSensitivity (`backends/julia/heat.jl`) | `interp` | checkpoints at isqrt(steps) times (`InterpolatingAdjoint(checkpointing = true)`); each interval is re-solved adaptively at the solve tolerances, not at the fixed step |
@@ -74,12 +74,13 @@ From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md)) and a
   (to 1.1 MB; 6254.7 MB against 6254.4 MB at 64 x 32 and 1e5 steps), 128 x 64 at 1e5 steps is refused (it asks for
   24.4 GB, the allocator's limit is 14.6 GB), checkpointing needs at most 94 MB of temporaries by XLA's analysis,
   and gradients equal the CPU run's to 8.4e-14.
-- JAX and pyadjoint match the exact gradient of the discrete scheme to 3e-13 or better at every step count and mesh
-  (JAX 2.3e-13 including the T4, pyadjoint 3.0e-13); SciMLSensitivity's continuous adjoints
+- JAX and pyadjoint match the exact gradient of the discrete scheme along uniform conductivity to 3e-13 or better at
+  every step count and mesh (JAX 2.3e-13 including the T4, pyadjoint 3.0e-13), and every cell's JAX gradient
+  matches its closed form to 1.1e-12 of the largest (spike/check_full_gradient.py); SciMLSensitivity's continuous adjoints
   are O(dt) off (1e-5 to 2e-5 at 1e5 steps), and BacksolveAdjoint is 89-100 % off, except at 1e5 steps on 32 x 16,
   where it reaches 5.3e289.
 - k(T): with one Newton iteration per step, unrolled differentiation is 7-22 times closer to the converged gradient
-  than implicit differentiation; from three iterations both agree with it to 2.1e-14 or better.
+  than implicit differentiation, along one random direction (the ratio depends on the direction); from three iterations both agree with it to 2.1e-14 or better.
   Firedrake (pyadjoint: hand-written Newton on the tape against a NonlinearVariationalSolver) gives the same J and
   gradients to 1e-14 ([results/kt-firedrake-local](results/kt-firedrake-local/README.md)); at two iterations which
   one is closer depends on the case.

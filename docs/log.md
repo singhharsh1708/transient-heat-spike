@@ -111,3 +111,22 @@
   times closer at one Newton iteration, and at two it depends on the case, as with JAX. Measured along uniform
   conductivity alone the two-iteration ratios are 0.7 at every step count, so the direction matters there. Local run
   in results/kt-firedrake-local; CI job kt-firedrake.
+- Corrections and checks after an outside review (2026-11-20):
+  - Every cell's gradient, not only the sum: the initial temperature is an exact eigenvector and the adjoint stays
+    in the same mode, so dJ/dk_e = (s' K_e s / s' K s) dJ/deps. JAX's per-cell gradients match that to 1.1e-12 of
+    the largest cell gradient on all three meshes, 10 to 1e4 steps, tape and checkpoint
+    (spike/check_full_gradient.py). The mode does not depend on y, so this checks the x-dependence of the gradient:
+    cells in one column have equal shares, and an error that permuted cells within a column would pass.
+  - BacksolveAdjoint is silent: at 1000 and 1e5 steps on 32 x 16 the process exits 0 with nothing on stderr (no
+    warning, no error; the harness's ok flag means no exception), while its gradient is 99 % off and -1.2e287 (CI
+    run 1 had 5.3e289 for the same case).
+  - JAX checkpointing keeps steps / c + c states with c the largest divisor of steps not above isqrt(steps); for a
+    prime step count c = 1 and it keeps every step. The sweep's step counts all have a divisor near the square root.
+  - The k(T) ratios are along one random direction; along uniform conductivity they differ (see above).
+  - OrdinaryDiffEq timing: with adaptive = false, OrdinaryDiffEqDifferentiation's do_newJW rebuilds J and W at every
+    step ("Not adaptive will always refactorize"); only a linear SciMLOperator skips it. With a MatrixOperator and
+    the mass matrix the forward builds W twice instead of 10001 times but is not faster (2.2 s against 1.8 s,
+    32 x 16, 1e4 steps; J differs by 1e-11, since that path solves with a Krylov method rather than a
+    factorisation). A plain loop with one LU takes about 0.14 s for the same steps (three runs; an earlier
+    measurement under heavy load gave 0.47 to 0.55 s), about 13 times faster than the ODE forward. So there is no
+    like-for-like Julia timing within the current API, and Julia times are not compared with the others.
