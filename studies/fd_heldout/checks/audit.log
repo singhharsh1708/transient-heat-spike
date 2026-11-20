@@ -1,0 +1,65 @@
+results.csv rows 4800 probes 1200 cases 300
+classification differences same vs separate epsilon {'unrolled': 0, 'implicit': 0, 'reference': 0}
+unrolled accurate rejected 0 / 1092 wrong passed 20 / 20 max E 0.1677391505741258
+accurate rejects by rtol []
+implicit accurate rejected 112 / 1200 wrong passed 0 / 0 max E 0.006915097952723294
+accurate rejects by rtol [(0.0001, 25), (0.001, 87)]
+reference accurate rejected 115 / 1200 wrong passed 0 / 0 max E 0.0
+accurate rejects by rtol [(0.0001, 27), (0.001, 88)]
+paired inversions 20 / 20
+wrong ((12, 6), 100, (1, 0.01), 0.001, 'energy') 0.1677391505741258 implicit E 0.002917525034044279 state error 0.0006226330833353909 base/fd count ranges [('5-5', '5-5')]
+wrong ((12, 6), 104, (1, 0.01), 0.001, 'energy') 0.1444048882965874 implicit E 0.002178505591395237 state error 0.0005736018922787789 base/fd count ranges [('5-5', '5-5')]
+wrong ((16, 8), 101, (1, 0.01), 0.001, 'energy') 0.12579150496981667 implicit E 0.0008799443220884754 state error 0.00020265147322912812 base/fd count ranges [('7-7', '7-7')]
+wrong ((16, 8), 102, (1, 0.01), 0.001, 'energy') 0.1303159011126209 implicit E 0.002753037273700844 state error 0.000447589648907125 base/fd count ranges [('7-7', '7-7')]
+wrong ((16, 8), 103, (1, 0.01), 0.001, 'energy') 0.12464929676008586 implicit E 0.001945625341312517 state error 0.0005228893209568276 base/fd count ranges [('7-7', '7-7')]
+rtol, max unrolled E 0.001 0.1677391505741258
+rtol, max unrolled E 0.0001 0.02471376648350849
+rtol, max unrolled E 1e-05 0.0031450462264471265
+rtol, max unrolled E 1e-06 0.00037652540591253617
+rtol, max unrolled E 1e-08 5.50396274427422e-06
+short, loose energy unrolled accurate 0 failures 0
+short, loose energy implicit accurate 40 failures 40
+short, loose energy reference accurate 40 failures 40
+wrong unrolled passing at individual epsilons 80 / 80
+reference accepted by cosine alone on those probes 15 / 20
+example 0 0.1 0.0001279376095067751 0.11371233922964984 0.9935913727087017
+example 0 0.01 1.2799058979765912e-06 0.11363844208568777 0.9935940338104424
+example 0 0.001 1.254671272181686e-08 0.11363770302966525 0.9935940604043675
+example 0 0.0001 2.5854338007466432e-09 0.11363769529281323 0.9935940605160289
+example 1 0.1 0.0001474268310520273 0.15719217044414918 0.9903512539220236
+example 1 0.01 1.4740171581124281e-06 0.15711736357593775 0.9903518812788296
+example 1 0.001 1.4659352355020324e-08 0.1571166154962208 0.9903518875182082
+example 1 0.0001 6.000481555261386e-10 0.15711660825656754 0.9903518875242334
+example 2 0.1 0.00027227044265847457 0.3102424753555595 0.9921445246410193
+example 2 0.01 2.7220392763048697e-06 0.3103217772255922 0.9921450388230155
+example 2 0.001 2.7221413069762393e-08 0.31032256921414064 0.9921450439071174
+example 2 0.0001 5.0989963591515734e-09 0.3103225755941262 0.9921450440430112
+example 3 0.1 0.00019937694945121497 0.07395510109403872 0.995137586265205
+example 3 0.01 1.992989535497668e-06 0.07391804622118767 0.9951377040102707
+example 3 0.001 1.989482501111656e-08 0.07391767578939741 0.9951377051659965
+example 3 0.0001 2.18911618853291e-09 0.07391767188169952 0.9951377051074656
+rtol 1e-3 schedule/obs E range (1, 1.0) energy 5.171698795628125e-05 0.0007570917603570291
+rtol 1e-3 schedule/obs E range (1, 1.0) right_mean 0.00039869674897846614 0.01933307925433455
+rtol 1e-3 schedule/obs E range (1, 0.01) energy 0.04208881769002679 0.1677391505741258
+rtol 1e-3 schedule/obs E range (1, 0.01) right_mean 0.007982134622098016 0.0647187013668072
+rtol 1e-3 schedule/obs E range (10, 0.1) energy 0.0005449826947338904 0.003114252677424
+rtol 1e-3 schedule/obs E range (10, 0.1) right_mean 0.0021013981145252695 0.01998680927027554
+results_fd_tight.csv rows 1920 probes 480 cases 120
+classification differences same vs separate epsilon {'unrolled': 0, 'implicit': 0, 'reference': 0}
+unrolled accurate rejected 16 / 372 wrong passed 0 / 20 max E 0.1677391505741258
+accurate rejects by rtol [(0.0001, 12), (0.001, 4)]
+implicit accurate rejected 7 / 480 wrong passed 0 / 0 max E 0.006915097952723294
+accurate rejects by rtol [(0.001, 7)]
+reference accurate rejected 0 / 480 wrong passed 0 / 0 max E 0.0
+accurate rejects by rtol []
+paired inversions 0 / 20
+wrong ((12, 6), 100, (1, 0.01), 0.001, 'energy') 0.1677391505741258 implicit E 0.002917525034044279 state error 0.0006226330833353909 base/fd count ranges [('5-5', '21-21'), ('5-5', '21-22')]
+wrong ((12, 6), 104, (1, 0.01), 0.001, 'energy') 0.1444048882965874 implicit E 0.002178505591395237 state error 0.0005736018922787789 base/fd count ranges [('5-5', '21-21'), ('5-5', '21-22')]
+wrong ((16, 8), 101, (1, 0.01), 0.001, 'energy') 0.12579150496981667 implicit E 0.0008799443220884754 state error 0.00020265147322912812 base/fd count ranges [('7-7', '28-28')]
+wrong ((16, 8), 102, (1, 0.01), 0.001, 'energy') 0.1303159011126209 implicit E 0.002753037273700844 state error 0.000447589648907125 base/fd count ranges [('7-7', '29-29'), ('7-7', '29-30')]
+wrong ((16, 8), 103, (1, 0.01), 0.001, 'energy') 0.12464929676008586 implicit E 0.001945625341312517 state error 0.0005228893209568276 base/fd count ranges [('7-7', '29-29')]
+rtol, max unrolled E 0.001 0.1677391505741258
+rtol, max unrolled E 0.0001 0.02471376648350849
+short, loose energy unrolled accurate 0 failures 40
+short, loose energy implicit accurate 40 failures 0
+short, loose energy reference accurate 40 failures 0

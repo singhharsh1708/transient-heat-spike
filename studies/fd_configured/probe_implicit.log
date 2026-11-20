@@ -1,0 +1,7 @@
+loss J^1 unrolled  passes 30/30  seed0 pass=True minmed=6.27e-10
+loss J^1 exact     passes 10/30  seed0 pass=False minmed=0.0196
+loss J^1 implicit  passes 13/30  seed0 pass=False minmed=0.0142
+loss J^2 unrolled  passes 30/30  seed0 pass=True minmed=1.06e-09
+loss J^2 exact     passes 10/30  seed0 pass=False minmed=0.019
+loss J^2 implicit  passes 13/30  seed0 pass=False minmed=0.0142
+verdict changes J vs J^2 (unrolled, exact): 0

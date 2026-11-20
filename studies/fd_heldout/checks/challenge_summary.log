@@ -1,0 +1,19 @@
+nx start preconditioner steps output | min/max E (%) | fields over 10% | paired inversions/40 | iterations (min/max)
+16 mixed jacobi 1 energy | 6.157 / 20.518 | 4/10 | 16/40 | 7 8
+16 mixed jacobi 1 right_mean | 2.632 / 8.239 | 0/10 | 0/40 | 7 8
+16 noise jacobi 1 energy | 0.231 / 1.463 | 0/10 | 0/40 | 8 9
+16 noise jacobi 1 right_mean | 0.493 / 2.027 | 0/10 | 0/40 | 8 9
+16 mixed identity 1 energy | 6.084 / 24.218 | 8/10 | 32/40 | 9 13
+16 mixed identity 1 right_mean | 3.651 / 25.356 | 4/10 | 16/40 | 9 13
+32 mixed jacobi 1 energy | 6.999 / 39.560 | 7/10 | 28/40 | 13 15
+32 mixed jacobi 1 right_mean | 3.045 / 10.345 | 1/10 | 4/40 | 13 15
+64 mixed jacobi 1 energy | 8.354 / 17.088 | 8/10 | 32/40 | 27 28
+64 mixed jacobi 1 right_mean | 5.259 / 8.810 | 0/10 | 0/40 | 27 28
+16 mixed jacobi 100 energy | 0.562 / 1.864 | 0/10 | 0/40 | 3 8
+16 mixed jacobi 100 right_mean | 0.998 / 5.218 | 0/10 | 0/40 | 3 8
+Original five, scale rms epsilons per case [4, 4, 4, 4, 4] paired inversions 20 strict at smallest epsilon: unrolled/exact passed 20 0
+Original five, scale l2 epsilons per case [4, 4, 3, 3, 3] paired inversions 20 strict at smallest epsilon: unrolled/exact passed 20 0
+Actual Mosaic FD functions with local adapter mass float64 E (%) 12.472 / 16.774 pass unrolled/exact 20 0 paired >10% 20
+Actual Mosaic FD functions with local adapter nodal float64 E (%) 8.118 / 11.519 pass unrolled/exact 20 0 paired >10% 16
+Actual Mosaic FD functions with local adapter mass float32 E (%) 12.472 / 16.774 pass unrolled/exact 20 0 paired >10% 20
+Actual Mosaic FD functions with local adapter nodal float32 E (%) 8.118 / 11.519 pass unrolled/exact 20 0 paired >10% 16
