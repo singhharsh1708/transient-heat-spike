@@ -1,0 +1,30 @@
+name: studies
+
+# Cheap guard for studies/: the audit must reproduce its archived log exactly (pure counting), the gradient checks
+# must stay at round-off, and two archived cases of results.csv must reproduce by tolerance, so a change to spike/
+# that breaks the studies' code or changes their numbers fails here. The full replays (checks/reproduce.py, minutes)
+# and the Newton study (needs the optimistix extra) stay manual.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ["spike/**", "studies/**", ".github/workflows/studies.yml"]
+  push:
+    branches: [main]
+    paths: ["spike/**", "studies/**", ".github/workflows/studies.yml"]
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python "jax[cpu]==0.12.1" "numpy==2.5.5" "scipy==1.18.1"
+      - name: fd_heldout audit tables match the archive
+        working-directory: studies/fd_heldout/checks
+        run: ../../../.venv/bin/python -B audit_tables.py > "$RUNNER_TEMP/audit.out" && diff "$RUNNER_TEMP/audit.out" audit.log
+      - name: fd_heldout gradient checks stay at round-off (complex step, replay, iteration counts)
+        run: .venv/bin/python -B studies/fd_heldout/checks/check_gradients_tol.py
+      - name: fd_heldout archived rows reproduce (two cases, by tolerance)
+        run: .venv/bin/python -B studies/fd_heldout/checks/replay_rows.py
