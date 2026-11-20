@@ -1,7 +1,8 @@
 name: studies
 
-# Cheap guard for studies/: two checks that import the spike's problem definition and must reproduce their
-# archived logs exactly. A change to spike/problem.py that breaks the studies fails here, not months later.
+# Cheap guard for studies/: the audit must reproduce its archived log exactly (pure counting), and the gradient
+# checks, which import the spike's problem definition, must stay at round-off. A change to spike/problem.py that
+# breaks the studies fails here, not months later.
 
 on:
   workflow_dispatch:
@@ -18,10 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python "jax[cpu]==0.12.1" "numpy>=2" "scipy>=1.14"
+      - run: uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python "jax[cpu]==0.12.1" "numpy==2.5.5" "scipy==1.18.1"
       - name: fd_heldout audit tables match the archive
         working-directory: studies/fd_heldout/checks
         run: diff <(../../../.venv/bin/python -B audit_tables.py) audit.log
-      - name: fd_heldout gradient checks match the archive
-        working-directory: studies/fd_heldout/checks
-        run: diff <(../../../.venv/bin/python -B verify_gradients.py) verify_gradients.log
+      - name: fd_heldout gradient checks stay at round-off (complex step, replay, iteration counts)
+        run: .venv/bin/python -B studies/fd_heldout/checks/check_gradients_tol.py
