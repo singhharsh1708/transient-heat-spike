@@ -1,0 +1,27 @@
+name: studies
+
+# Cheap guard for studies/: two checks that import the spike's problem definition and must reproduce their
+# archived logs exactly. A change to spike/problem.py that breaks the studies fails here, not months later.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ["spike/**", "studies/**", ".github/workflows/studies.yml"]
+  push:
+    branches: [main]
+    paths: ["spike/**", "studies/**", ".github/workflows/studies.yml"]
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python "jax[cpu]==0.12.1" "numpy>=2" "scipy>=1.14"
+      - name: fd_heldout audit tables match the archive
+        working-directory: studies/fd_heldout/checks
+        run: diff <(../../../.venv/bin/python -B audit_tables.py) audit.log
+      - name: fd_heldout gradient checks match the archive
+        working-directory: studies/fd_heldout/checks
+        run: diff <(../../../.venv/bin/python -B verify_gradients.py) verify_gradients.log
