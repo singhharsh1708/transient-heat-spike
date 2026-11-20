@@ -45,12 +45,13 @@ def jax_platform() -> str:
 subprocess.run(["git", "clone", "-q", REPO, str(CODE)], check=True)
 subprocess.run(["git", "-C", str(CODE), "checkout", "-q", COMMIT], check=True)
 
-# JAX with CUDA: the version CI pins first (same XLA as the CPU tables), else the image's own, else the latest.
+# JAX with CUDA: the version CI pins (same XLA as the CPU tables); if that cannot be installed, the image's own,
+# else the latest.
 if not SMOKE:
     for pkg in ("jax[cuda12]==0.12.1", None, "jax[cuda12]"):
         if pkg:
             subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-U", pkg], check=False)
-        if jax_platform().endswith("gpu"):
+        if jax_platform().partition("\n")[0].endswith("gpu"):  # stdout first; stderr may follow
             break
     else:
         sys.exit(f"no GPU JAX: {jax_platform()}")

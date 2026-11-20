@@ -139,12 +139,12 @@ def main():
     try:
         if a.mode == "forward":
             f = compile_with_analysis(J, rho, res)
-            t0 = time.perf_counter(); val = float(f(rho)); res["first_s"] = time.perf_counter() - t0
+            t0 = time.perf_counter(); val = float(f(rho)); res["first_run_s"] = time.perf_counter() - t0
             t0 = time.perf_counter(); f(rho).block_until_ready(); res["warm_s"] = time.perf_counter() - t0
             res["J"] = val
         else:
             vg = compile_with_analysis(jax.value_and_grad(J), rho, res)
-            t0 = time.perf_counter(); val, g = vg(rho); g = np.asarray(g); res["first_s"] = time.perf_counter() - t0
+            t0 = time.perf_counter(); val, g = vg(rho); g = np.asarray(g); res["first_run_s"] = time.perf_counter() - t0
             t0 = time.perf_counter(); jax.block_until_ready(vg(rho)); res["warm_s"] = time.perf_counter() - t0
             res["J"] = float(val)
             res["dJ_uniform"] = float(g.sum())

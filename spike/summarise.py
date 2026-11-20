@@ -82,12 +82,16 @@ def err(d):
 
 def dev_cell(d):
     """Peak accelerator memory (MB) and its growth over the warm-up; failures with what was reached or asked for."""
-    if d is None or "device_peak_mb" not in d:
+    if d is None:
         return "-"
     if not d.get("ok"):
         if (need := refused_mb(d)) is not None:
             return f"out of memory: needs {need / 1024:.1f} GB"
-        return f"failed at {d['device_peak_mb'] / 1024:.1f} GB"
+        if "device_peak_mb" in d:
+            return f"failed at {d['device_peak_mb'] / 1024:.1f} GB"
+        return "killed" if "killed" in str(d.get("error", "")) else "failed"  # a run_case stub
+    if "device_peak_mb" not in d:
+        return "-"
     def mb(v):  # three figures for the small cases, whole MB above 100
         return f"{v:.0f}" if abs(v) >= 100 else f"{v:.3g}"
 
@@ -110,8 +114,10 @@ for nx, ny in meshes:
     for k in keys:
         lines.append(f"| {k[0]} | {k[1]} | " + " | ".join(mem_cell(cases[k].get(s)) for s in steps_all) + " |")
     if any("device_peak_mb" in d for k in keys for d in cases[k].values()):
+        limits = [d["device_limit_mb"] for k in keys for d in cases[k].values() if d.get("device_limit_mb")]
+        cap = f"; the allocator's limit is {max(limits) / 1024:.1f} GB" if limits else ""
         lines += ["\n**Peak device memory (MB)** (the accelerator allocator's peak bytes in use; in brackets its "
-                  "growth over the warm-up)\n", head, sep]
+                  f"growth over the warm-up{cap})\n", head, sep]
         for k in keys:
             lines.append(f"| {k[0]} | {k[1]} | " + " | ".join(dev_cell(cases[k].get(s)) for s in steps_all) + " |")
     lines += ["\n**Gradient time (s)**\n", head, sep]
