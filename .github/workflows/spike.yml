@@ -5,11 +5,10 @@ name: spike
 # killed at 13 GB of resident memory (recorded as such) so that running out of memory never takes the runner down.
 # Per-case timeouts times the five step counts stay inside each job's timeout.
 
+# Run by hand (Actions > spike > Run workflow): the full sweep is 24 jobs of about 45 minutes, too much to start on
+# every push touching spike/ (the studies workflow is the cheap per-change check).
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ["spike/**", "backends/**", ".github/workflows/spike.yml"]
 
 concurrency:
   group: spike-${{ github.ref }}
