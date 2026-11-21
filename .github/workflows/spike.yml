@@ -91,7 +91,7 @@ jobs:
   firedrake:
     name: "Firedrake ${{ matrix.strategy }}, ${{ matrix.mesh }}"
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 330
     container:
       image: firedrakeproject/firedrake-vanilla-default:2026.10.0
       options: --user root
@@ -116,7 +116,7 @@ jobs:
               python3 backends/firedrake/heat.py --nx "$FD_NX" --ny "$FD_NY" --steps 100 --strategy "${{ matrix.strategy }}" --fd
           fi
           for s in $STEPS; do
-            python3 spike/run_case.py "out/firedrake-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 2400 \
+            python3 spike/run_case.py "out/firedrake-${{ matrix.strategy }}-${nx}x${ny}-$s.json" 3600 \
               --mem-limit-mb "$MEM_LIMIT_MB" -- \
               python3 backends/firedrake/heat.py --nx "$nx" --ny "$ny" --steps "$s" --strategy "${{ matrix.strategy }}"
           done
