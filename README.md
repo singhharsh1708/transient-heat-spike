@@ -55,7 +55,7 @@ Newton solves; the converged reference runs in its own process.
 ## Running
 
 ```sh
-uv venv && uv pip install "jax[cpu]==0.12.1" numpy scipy
+uv venv --python 3.12 && uv pip install "jax[cpu]==0.12.1" "numpy==2.5.5" "scipy==1.18.1"
 .venv/bin/python backends/jax/heat.py --nx 32 --ny 16 --steps 10000 --strategy tape --fd
 julia --project=backends/julia -e 'using Pkg; Pkg.instantiate()'
 julia --project=backends/julia backends/julia/heat.jl --nx 32 --ny 16 --steps 10000 --strategy gauss
@@ -63,7 +63,12 @@ docker run --rm -v "$PWD":/work -w /work firedrakeproject/firedrake-vanilla-defa
   python3 backends/firedrake/heat.py --nx 32 --ny 16 --steps 10000 --strategy checkpoint
 ```
 
-`.github/workflows/spike.yml` runs the whole sweep (10 to 100000 steps; three mesh sizes for JAX and Firedrake, two
+Versions: Python 3.12 (jax 0.12.1 needs it), Julia 1.10.12 (the version backends/julia/Manifest.toml was resolved
+with), the Firedrake image above. The studies' exact-replay checks compare floats by value, so other numpy and scipy
+builds can differ in the last digits. Extras: `mpmath` for spike/check_reference_mp.py, `optimistix==0.1.0` for
+studies/newton_heldout, and torch, torch-fem plus the mosaic fork for studies/fd_served.
+
+`.github/workflows/spike.yml` runs the whole sweep on demand (10 to 100000 steps; three mesh sizes for JAX and Firedrake, two
 for OrdinaryDiffEq) on GitHub's CPU runners,
 one process per case, killed and recorded at 13 GB, and `spike/summarise.py` turns the results into tables and
 plots (the run's `summary` artifact). Saved runs go in `results/`.
