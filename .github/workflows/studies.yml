@@ -20,7 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python "jax[cpu]==0.12.1" "numpy==2.5.5" "scipy==1.18.1"
+      - run: uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python "jax[cpu]==0.12.1" "numpy==2.5.5" "scipy==1.18.1" "mpmath==1.3.0"
+      - name: The closed-form reference (dense cross-check and 40-digit evaluation)
+        run: .venv/bin/python -B spike/problem.py && .venv/bin/python -B spike/check_reference_mp.py
       - name: fd_heldout audit tables match the archive
         working-directory: studies/fd_heldout/checks
         run: ../../../.venv/bin/python -B audit_tables.py > "$RUNNER_TEMP/audit.out" && diff "$RUNNER_TEMP/audit.out" audit.log
