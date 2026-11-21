@@ -97,16 +97,17 @@ checkpoints at isqrt(steps) times, as in the CI sweep, the effect is small.
 ## Studies
 
 Three follow-up studies in [studies/](studies/), each with its criteria written before the run (PREREG.md), its
-data, and a README that separates registered results from later observations. The two FD studies use a Jacobi-PCG
+data, and a README that separates results against those criteria from checks added after the run. The criteria
+files were committed together with the results, so their order rests on this record, not on a timestamp. The two FD studies use a Jacobi-PCG
 solver written for the study, not any mosaic backend; the Newton study uses Optimistix.
 
 - [studies/fd_heldout](studies/fd_heldout/README.md): a best-step finite-difference gradient check, scored as mosaic
   scores it, with the FD forward at the solver's own tolerance. At CG rtol 1e-3 over one short step it accepted
   truncated-CG gradients 12-17 % off and rejected the exact gradient on the same 20/20 probe sets. Tightening only
-  the FD forward to 1e-12 (not registered) stopped it accepting those (0/20).
+  the FD forward to 1e-12 (added after the run) stopped it accepting those (0/20).
 - [studies/fd_configured](studies/fd_configured/README.md): the fork's configured 50-step FD workload with the same
-  hypothetical CG. No truncated gradient crossed 10 % (registered endpoint 0/30; largest 9.1 %), but at 1e-3 the
-  check rejected the exact gradient on 20 of 30 fresh fields (observed, not registered).
+  hypothetical CG. No truncated gradient crossed 10 % (endpoint fixed before the run: 0/30; largest 9.1 %), but at 1e-3 the
+  check rejected the exact gradient on 20 of 30 fresh fields (observed, not a criterion fixed before the run).
 - [studies/newton_heldout](studies/newton_heldout/README.md): Optimistix Newton stopped at rtol = atol = 1e-4 gives
   gradients within 6.1e-9 by both its default implicit adjoint and by differentiating the iterations (36 cases);
   needs `optimistix==0.1.0`.

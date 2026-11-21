@@ -10,7 +10,7 @@ Each of four probe seeds gives six unit Gaussian directions. Central FD uses `h 
 
 Mosaic's thermal-transient configuration uses the same direction count, epsilon grid and RMS scaling. It uses FP32 directions, a squared-output loss, separate best epsilons for the two absolute checks, and a 50× peer-median check when at least three entries are valid and their median is positive. Here the draws are FP64, the observables are scored directly, and only absolute checks are evaluated. Using separate extrema changes zero archived verdicts. The configured Mosaic workload uses random density and 50 steps on an 8×4×1 mesh. [Configuration](https://github.com/singhharsh1708/mosaic/blob/749d77576b71a21b72b4af4b00d0e0f80b772f28/mosaic/benchmarks/problems/thermal_transient/config.py) · [FD kernel](https://github.com/singhharsh1708/mosaic/blob/749d77576b71a21b72b4af4b00d0e0f80b772f28/mosaic/benchmarks/problems/shared/gradient.py) · [Status aggregation](https://github.com/singhharsh1708/mosaic/blob/749d77576b71a21b72b4af4b00d0e0f80b772f28/mosaic/benchmarks/core/status.py)
 
-## Registered results
+## Results against the criteria in PREREG.md
 
 The matched-tolerance run contains 300 cases, 1,200 case/probe sets and 4,800 epsilon rows. Unrolled AD replays the SciPy iteration counts in JAX. The implicit estimate uses exact transpose solves along the approximate trajectory. [Matched-tolerance results](results.csv)
 
@@ -25,7 +25,7 @@ H1 holds. Five of ten short, loose energy cases exceeded 10% error (12.465–16.
 
 On 16×8, field 102, the base solve and every signed perturbation used seven updates. For probe 0 at `eps = 1e-4`, the median directional error was `2.5854e-9` for the unrolled gradient and 11.3638% for the reference. The FD/reference probe cosine was 0.993594. The unrolled **full-gradient** error was 13.0316%. Across the five qualifying cases, the unrolled gradient passed at all 80 probe/epsilon combinations. Cosine alone would accept the exact reference in 15/20 probe sets. [Numerical audit](checks/audit.log)
 
-Not in PREREG.md, run after the registered sweep: tightening only the FD forward to `1e-12` revisited the two loosest base tolerances (120 cases, 480 probe sets, 1,920 rows). Wrong unrolled gradients passed on 0/20 probe sets. The exact gradient had 0/480 rejections. Among gradients with E < 1%, the check rejected 16/372 unrolled and 7/480 implicit estimates. [Tight-FD results](results_fd_tight.csv)
+Not in PREREG.md, run after the main sweep: tightening only the FD forward to `1e-12` revisited the two loosest base tolerances (120 cases, 480 probe sets, 1,920 rows). Wrong unrolled gradients passed on 0/20 probe sets. The exact gradient had 0/480 rejections. Among gradients with E < 1%, the check rejected 16/372 unrolled and 7/480 implicit estimates. [Tight-FD results](results_fd_tight.csv)
 
 ## Scope and prior work
 
