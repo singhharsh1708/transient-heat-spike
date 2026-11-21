@@ -6,10 +6,21 @@ reference; and its follow-on, temperature-dependent conductivity, which should s
 from differentiating unrolled Newton iterations. The issue asks for each idea to be "checked with a quick spike
 before full integration"; this is that check, on CPU, outside mosaic.
 
+**Answer for idea 4.** It separates solvers on memory, not on gradient accuracy: every exact-discrete adjoint (JAX,
+pyadjoint, tape or checkpointed) returns the same gradient to 3e-13, while a full tape grows linearly with the step
+count (+6.1 GB at 1e5 steps on 64 x 32 for JAX) and checkpointing does not, or barely (JAX within about +100 MB;
+pyadjoint's Revolve +0.6 to +1.6 GB, from its tape records and recomputation garbage). Continuous adjoints
+(SciMLSensitivity) are first order in the step, and BacksolveAdjoint fails on diffusion. For #375's CI budget (a few
+minutes per solver call, under about 30 minutes per solver): the memory separation is already clear at 1e4 steps,
+where a call takes seconds (JAX) to minutes (pyadjoint Revolve, 2 to 3 minutes at 64 x 32 in CI); at 1e5 steps a
+single pyadjoint Revolve call on 128 x 64 takes 29 to 31 minutes, so the top of the sweep belongs outside per-PR CI.
+The mosaic integration on a fork (singhharsh1708/mosaic#2) runs its default suite to 1e4 steps in 21 to 26 minutes
+per solver.
+
 ## Problem
 
-Slab [0, 2] x [0, 1], cold left face, other faces insulated, conductivity k0 rho per cell (rho as in mosaic's
-thermal-mesh), initial temperature the single eigenmode sin(pi x / 4). Then T(x, t) = sin(pi x / 4) exp(-lam t),
+Slab [0, 2] x [0, 1], cold left face, other faces insulated, conductivity k0 rho per cell (linear in rho;
+mosaic's thermal-mesh maps rho through SIMP, which the fork integration does), initial temperature the single eigenmode sin(pi x / 4). Then T(x, t) = sin(pi x / 4) exp(-lam t),
 and J = integral of T(t_end)^2 and its derivative along uniform conductivity have closed forms (`spike/problem.py`).
 Every backend uses the same bilinear (Q1) elements, consistent mass and backward Euler with a fixed number of steps
 to t_end, so forward results agree (to 1e-11 or better; OrdinaryDiffEq's drifts to 3.5e-12 at 100000 steps) and
@@ -44,7 +55,7 @@ Newton solves; the converged reference runs in its own process.
 ## Running
 
 ```sh
-uv venv && uv pip install "jax[cpu]==0.12.1" numpy scipy
+uv venv --python 3.12 && uv pip install "jax[cpu]==0.12.1" "numpy==2.5.5" "scipy==1.18.1"
 .venv/bin/python backends/jax/heat.py --nx 32 --ny 16 --steps 10000 --strategy tape --fd
 julia --project=backends/julia -e 'using Pkg; Pkg.instantiate()'
 julia --project=backends/julia backends/julia/heat.jl --nx 32 --ny 16 --steps 10000 --strategy gauss
@@ -52,7 +63,12 @@ docker run --rm -v "$PWD":/work -w /work firedrakeproject/firedrake-vanilla-defa
   python3 backends/firedrake/heat.py --nx 32 --ny 16 --steps 10000 --strategy checkpoint
 ```
 
-`.github/workflows/spike.yml` runs the whole sweep (10 to 100000 steps; three mesh sizes for JAX and Firedrake, two
+Versions: Python 3.12 (jax 0.12.1 needs it), Julia 1.10.12 (the version backends/julia/Manifest.toml was resolved
+with), the Firedrake image above. The studies' exact-replay checks compare floats by value, so other numpy and scipy
+builds can differ in the last digits. Extras: `mpmath` for spike/check_reference_mp.py, `optimistix==0.1.0` for
+studies/newton_heldout, and torch, torch-fem plus the mosaic fork for studies/fd_served.
+
+`.github/workflows/spike.yml` runs the whole sweep on demand (10 to 100000 steps; three mesh sizes for JAX and Firedrake, two
 for OrdinaryDiffEq) on GitHub's CPU runners,
 one process per case, killed and recorded at 13 GB, and `spike/summarise.py` turns the results into tables and
 plots (the run's `summary` artifact). Saved runs go in `results/`.
@@ -65,27 +81,35 @@ From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md)) and a
 - A full tape grows linearly with the step count: at 1e5 steps JAX needs +1.5 GB on 32 x 16 and +6.1 GB on
   64 x 32 and refuses 128 x 64 up front (it asks for 24.4 GB); pyadjoint needs +4.4 and +9.0 GB and is killed at
   13 GB on 128 x 64.
-- JAX's checkpointing stays within +102 MB on every mesh (1.6-1.8 times the tape's time at 1e5 steps).
-  pyadjoint's Revolve stores no per-step state but still grows (+0.64 to +1.6 GB at 1e5 steps, 2.2-3.3 times the
-  time, default settings): its tape keeps three blocks per step (about 5-6 KB/step on both meshes measured), and
+- JAX's checkpointing stays within about +100 MB on every mesh. pyadjoint's Revolve stores no per-step state but
+  still grows (+0.64 to +1.6 GB at 1e5 steps, default settings): its tape keeps three blocks per step (about 5-6 KB/step on both meshes measured), and
   garbage from the recomputation, which grows with the mesh, waits for the cycle collector; gc_timestep_frequency
-  removes the second part at 1.2-2 times the time (repro/pyadjoint_checkpoint_memory.py, docs/log.md).
+  removes the second part at 1.2-2 times the time (repro/pyadjoint_checkpoint_memory.py, output in
+  repro/output/, docs/log.md).
+- The memory figures reproduce: in six full sweeps of the same code (CI run 1 and five later runs in
+  [results/ci-later](results/ci-later/README.md)), the tape's growth at 1e5 steps varied by under 1 % (JAX +1587 to
+  +1593 and +6266 to +6271 MB, pyadjoint +4430 to +4469 and +9244 to +9277 MB on 32 x 16 and 64 x 32). The time
+  ratios do not: tape and checkpoint run as separate jobs on different runners, and at 1e5 steps checkpointing took
+  0.88 to 2.12 times the tape's time for JAX and 1.19 to 3.24 times for pyadjoint across those runs, so a time
+  comparison needs both strategies in one job.
 - On a T4 GPU a growing JAX tape's device memory is what XLA's memory analysis of the compiled gradient predicts
   (to 1.1 MB; 6254.7 MB against 6254.4 MB at 64 x 32 and 1e5 steps), 128 x 64 at 1e5 steps is refused (it asks for
   24.4 GB, the allocator's limit is 14.6 GB), checkpointing needs at most 94 MB of temporaries by XLA's analysis,
   and gradients equal the CPU run's to 8.4e-14.
 - JAX and pyadjoint match the exact gradient of the discrete scheme along uniform conductivity to 3e-13 or better at
   every step count and mesh (JAX 2.3e-13 including the T4, pyadjoint 3.0e-13), and every cell's JAX gradient
-  matches its closed form to 1.1e-12 of the largest (spike/check_full_gradient.py); SciMLSensitivity's continuous adjoints
+  matches its closed form to 1.1e-12 of the largest (spike/check_full_gradient.py; output in results/full-gradient-check.txt); SciMLSensitivity's continuous adjoints
   are O(dt) off (1e-5 to 2e-5 at 1e5 steps), and BacksolveAdjoint is 89-100 % off, except at 1e5 steps on 32 x 16,
   where it reaches 5.3e289.
-- k(T): with one Newton iteration per step, unrolled differentiation is 7-22 times closer to the converged gradient
+- k(T): with one Newton iteration per step, unrolled differentiation is 7 to 22.5 times closer to the converged gradient
   than implicit differentiation, along one random direction (the ratio depends on the direction); from three iterations both agree with it to 2.1e-14 or better.
   Firedrake (pyadjoint: hand-written Newton on the tape against a NonlinearVariationalSolver) gives the same J and
   gradients to 1e-14 ([results/kt-firedrake-local](results/kt-firedrake-local/README.md)); at two iterations which
-  one is closer depends on the case.
+  one is closer depends on the case. The gap needs the forced single Newton iteration: stopped by tolerance
+  (Optimistix, studies/newton_heldout), both routes agree with the converged gradient to 6.1e-9 at 1e-4 and 8.4e-5
+  at 1e-2.
 
-Separately, repro/sciml_checkpoint_resolve.jl shows that SciMLSensitivity's checkpointed InterpolatingAdjoint
+Separately, repro/sciml_checkpoint_resolve.jl (output in repro/output/) shows that SciMLSensitivity's checkpointed InterpolatingAdjoint
 re-solves each checkpoint interval adaptively, ignoring a fixed dt, so its error has a floor set by the re-solve's
 tolerances (the adjoint defaults, abstol = 1e-6 and reltol = 1e-3) rather than by the step. With one checkpoint
 interval (saveat = [T], so the only checkpoints are the start and the end) the error stalls at the defaults (1.5,

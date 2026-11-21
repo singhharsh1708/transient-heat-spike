@@ -1,0 +1,1 @@
+{"ok": false, "error": "killed: timeout after 2400 s", "stderr_tail": "", "exit_status": -9, "process_wall_s": 2400.0494509520004, "sampled_peak_rss_mb": 1901.203125}

@@ -52,11 +52,13 @@
   above 1e3 are now drawn as a triangle at the cap). Full tape at 1e5 steps: JAX +1.5 GB (32 x 16) and +6.1 GB
   (64 x 32), and on 128 x 64 XLA refuses up front (it asks for 26216674456 bytes, 24.4 GB); pyadjoint +4.4 and
   +9.0 GB, killed at 13 GB on 128 x 64. JAX checkpointing stays within +102 MB on every mesh, at 1.6-1.8 times the
-  tape's time at 1e5 steps on the two meshes where the tape finished. Gradients of JAX and pyadjoint agree with the
+  tape's time at 1e5 steps on the two meshes where the tape finished (in this run; see 2026-11-21: across six runs
+  the ratio is 0.88-2.12, as tape and checkpoint ran on different runners). Gradients of JAX and pyadjoint agree with the
   exact discrete gradient to 3e-13 or better everywhere (see the correction below). (GB here is 1024 MB, as in
   the tables.)
 - pyadjoint's Revolve does not give flat memory: +0.64, +0.84 and +1.6 GB at 1e5 steps on the three meshes
-  (against +4.4, +9.0 and over 13 GB for its tape), at 2.2-3.3 times the tape's time, with pyadjoint's default
+  (against +4.4, +9.0 and over 13 GB for its tape), at 2.2-3.2 times the tape's time in this run (1.19-3.24 across
+  six runs, different runners), with pyadjoint's default
   settings; from 1e4 to 1e5 steps it grows 6.5, 8.4 and 15.6 KB/step. repro/pyadjoint_checkpoint_memory.py
   (Firedrake 2026.10.0, pyadjoint 2026.10.0, checkpoint_schedules 1.0.4; slopes between 1000 and 4000 steps, after
   a 10-step annotated warm-up): with Revolve 3 of the tape's variables hold a state after the derivative at any
@@ -119,8 +121,8 @@
     (spike/check_full_gradient.py). The mode does not depend on y, so this checks the x-dependence of the gradient:
     cells in one column have equal shares, and an error that permuted cells within a column would pass.
   - BacksolveAdjoint is silent: at 1000 and 1e5 steps on 32 x 16 the process exits 0 with nothing on stderr (no
-    warning, no error; the harness's ok flag means no exception), while its gradient is 99 % off and -1.2e287 (CI
-    run 1 had 5.3e289 for the same case).
+    warning, no error; the harness's ok flag means no exception), while its gradient is 99 % off and, at 1e5 steps, a value of
+    -1.2e287 (CI run 1 recorded a relative error of 5.3e289 for the same case).
   - JAX checkpointing keeps steps / c + c states with c the largest divisor of steps not above isqrt(steps); for a
     prime step count c = 1 and it keeps every step. The sweep's step counts all have a divisor near the square root.
   - The k(T) ratios are along one random direction; along uniform conductivity they differ (see above).

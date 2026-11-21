@@ -7,7 +7,7 @@ conductivity, eigenmode start, 50 steps to t_end, J = sum of nodal T^2, mosaic's
 | CG rtol | unrolled E (min..max) | unrolled passes | exact gradient passes | endpoint fixed before the run |
 |---|---|---|---|---|
 | 1e-3 | 0.26 % .. 9.1 % | 30/30 | **10/30** | **0/30** |
-| 1e-6 (control) | 2.7e-6 .. 2.7e-4 | 30/30 | 30/30 | 0/30 |
+| 1e-6 (control) | 2.7e-4 % .. 2.7e-2 % | 30/30 | 30/30 | 0/30 |
 
 Rounding J to float32 changes no verdict. Seed 0 (the configured field) at 1e-3: unrolled E = 2.7 % passes
 (median FD error 6e-10), the exact gradient fails (best median FD error 1.96 %).

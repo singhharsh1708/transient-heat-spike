@@ -17,4 +17,6 @@ made here from these records with `python spike/summarise.py results/t4-run-1 re
   CI run (results/ci-run-1) to 8.4e-14 and 1.5e-14 relative in every case both completed.
 - Times are float64 on a T4: slower than the CPU runner on 32 x 16, at 10 steps on every mesh and at 100 steps on
   64 x 32; on 64 x 32 from 1000 steps checkpointing takes the same time or up to 6 % less and the tape 13-21 %
-  longer; faster on 128 x 64 from 100 steps (checkpoint at 1e5 steps: 82.5 s against 118 s).
+  longer than in CI run 1; faster on 128 x 64 from 100 steps (checkpoint at 1e5 steps: 82.5 s against 118 s). CPU
+  times vary between runners (the 64 x 32 tape at 1e5 steps took 27 to 44 s across six CI runs), so these
+  comparisons are against one CPU run, not a measured speed-up.

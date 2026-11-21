@@ -1,0 +1,1 @@
+{"ok": false, "error": "killed: group memory 13.0 GB passed the 13.0 GB limit", "stderr_tail": "", "exit_status": -9, "process_wall_s": 466.758840661, "sampled_peak_rss_mb": 13316.42578125}

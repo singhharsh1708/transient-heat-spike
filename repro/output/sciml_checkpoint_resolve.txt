@@ -1,0 +1,13 @@
+# julia --project=backends/julia repro/sciml_checkpoint_resolve.jl, Julia 1.10.12, 2026-11-21
+
+default tolerances
+steps   central FD        checkpointing=true     checkpointing=false
+100     -6.993214826      rel err 0.0146         rel err 0.00996
+1000    -6.99414927       rel err 0.00781        rel err 0.000988
+10000   -6.994233248      rel err 0.00715        rel err 9.87e-5
+
+abstol = 1e-12, reltol = 1e-10
+steps   central FD        checkpointing=true     checkpointing=false
+100     -6.993214826      rel err 0.00746        rel err 0.00987
+1000    -6.994149269      rel err 0.000746       rel err 0.000987
+10000   -6.994233248      rel err 7.66e-5        rel err 9.87e-5
