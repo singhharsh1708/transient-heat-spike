@@ -97,7 +97,7 @@ From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md)) and a
   and gradients equal the CPU run's to 8.4e-14.
 - JAX and pyadjoint match the exact gradient of the discrete scheme along uniform conductivity to 3e-13 or better at
   every step count and mesh (JAX 2.3e-13 including the T4, pyadjoint 3.0e-13), and every cell's JAX gradient
-  matches its closed form to 1.1e-12 of the largest (spike/check_full_gradient.py); SciMLSensitivity's continuous adjoints
+  matches its closed form to 1.1e-12 of the largest (spike/check_full_gradient.py; output in results/full-gradient-check.txt); SciMLSensitivity's continuous adjoints
   are O(dt) off (1e-5 to 2e-5 at 1e5 steps), and BacksolveAdjoint is 89-100 % off, except at 1e5 steps on 32 x 16,
   where it reaches 5.3e289.
 - k(T): with one Newton iteration per step, unrolled differentiation is 7 to 22.5 times closer to the converged gradient

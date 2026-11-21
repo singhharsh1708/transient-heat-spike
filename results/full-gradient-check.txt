@@ -1,0 +1,25 @@
+# python spike/check_full_gradient.py (2026-11-21, macOS arm64, jax 0.12.1 CPU, about 30 s)
+32 x 16, 10 steps, tape: max cell error / max cell gradient 7.2e-13
+32 x 16, 10 steps, checkpoint: max cell error / max cell gradient 7.2e-13
+32 x 16, 100 steps, tape: max cell error / max cell gradient 2.2e-13
+32 x 16, 100 steps, checkpoint: max cell error / max cell gradient 2.2e-13
+32 x 16, 1000 steps, tape: max cell error / max cell gradient 3.8e-14
+32 x 16, 1000 steps, checkpoint: max cell error / max cell gradient 3.7e-14
+32 x 16, 10000 steps, tape: max cell error / max cell gradient 2.6e-13
+32 x 16, 10000 steps, checkpoint: max cell error / max cell gradient 4.2e-14
+64 x 32, 10 steps, tape: max cell error / max cell gradient 5.8e-13
+64 x 32, 10 steps, checkpoint: max cell error / max cell gradient 5.8e-13
+64 x 32, 100 steps, tape: max cell error / max cell gradient 4.6e-13
+64 x 32, 100 steps, checkpoint: max cell error / max cell gradient 4.6e-13
+64 x 32, 1000 steps, tape: max cell error / max cell gradient 2.6e-13
+64 x 32, 1000 steps, checkpoint: max cell error / max cell gradient 2.6e-13
+64 x 32, 10000 steps, tape: max cell error / max cell gradient 2.4e-13
+64 x 32, 10000 steps, checkpoint: max cell error / max cell gradient 1.5e-13
+128 x 64, 10 steps, tape: max cell error / max cell gradient 1.1e-12
+128 x 64, 10 steps, checkpoint: max cell error / max cell gradient 1.1e-12
+128 x 64, 100 steps, tape: max cell error / max cell gradient 9.9e-13
+128 x 64, 100 steps, checkpoint: max cell error / max cell gradient 9.9e-13
+128 x 64, 1000 steps, tape: max cell error / max cell gradient 7.2e-13
+128 x 64, 1000 steps, checkpoint: max cell error / max cell gradient 7.2e-13
+128 x 64, 10000 steps, tape: max cell error / max cell gradient 6.1e-13
+128 x 64, 10000 steps, checkpoint: max cell error / max cell gradient 6.1e-13
