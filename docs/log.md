@@ -101,7 +101,8 @@
   3e-14 and 1.3e-13 on the three meshes up to 1000 steps and at most 2.3e-13 (64 x 32, tape, 1e5 steps); its J error
   depends on the mesh, not the step count (about 2e-14, 7e-14, 2.6e-13). discrete_exact now uses the single-mode
   closed form (the nodal sin(pi x / 2 Lx) is an exact eigenvector of the 1D pencil) with exp(-2N log1p(dt lam1)):
-  within 4.5e-16 of the 40-digit value on every mesh and step count here.
+  within 4.5e-16 of the 40-digit value on every mesh and step count here. (spike/check_reference_mp.py, added
+  2026-11-21, reruns that comparison on the CI meshes: worst 4.5e-16.)
 - k(T) on Firedrake (backends/firedrake/heat_kt.py): the JAX scheme in UFL, with the cell average of T through
   cell_avg (on a bilinear rectangle the mean of the nodal values, as in JAX); unrolled = Newton iterations written
   out as taped linear solves, implicit = a NonlinearVariationalSolver forced to take exactly n iterations
