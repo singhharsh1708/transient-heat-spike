@@ -99,7 +99,9 @@ From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md)) and a
   than implicit differentiation, along one random direction (the ratio depends on the direction); from three iterations both agree with it to 2.1e-14 or better.
   Firedrake (pyadjoint: hand-written Newton on the tape against a NonlinearVariationalSolver) gives the same J and
   gradients to 1e-14 ([results/kt-firedrake-local](results/kt-firedrake-local/README.md)); at two iterations which
-  one is closer depends on the case.
+  one is closer depends on the case. The gap needs the forced single Newton iteration: stopped by tolerance
+  (Optimistix, studies/newton_heldout), both routes agree with the converged gradient to 6.1e-9 at 1e-4 and 8.4e-5
+  at 1e-2.
 
 Separately, repro/sciml_checkpoint_resolve.jl shows that SciMLSensitivity's checkpointed InterpolatingAdjoint
 re-solves each checkpoint interval adaptively, ignoring a fixed dt, so its error has a floor set by the re-solve's
