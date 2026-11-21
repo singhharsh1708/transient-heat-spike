@@ -84,7 +84,8 @@ From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md)) and a
 - JAX's checkpointing stays within about +100 MB on every mesh. pyadjoint's Revolve stores no per-step state but
   still grows (+0.64 to +1.6 GB at 1e5 steps, default settings): its tape keeps three blocks per step (about 5-6 KB/step on both meshes measured), and
   garbage from the recomputation, which grows with the mesh, waits for the cycle collector; gc_timestep_frequency
-  removes the second part at 1.2-2 times the time (repro/pyadjoint_checkpoint_memory.py, docs/log.md).
+  removes the second part at 1.2-2 times the time (repro/pyadjoint_checkpoint_memory.py, output in
+  repro/output/, docs/log.md).
 - The memory figures reproduce: in six full sweeps of the same code (CI run 1 and five later runs in
   [results/ci-later](results/ci-later/README.md)), the tape's growth at 1e5 steps varied by under 1 % (JAX +1587 to
   +1593 and +6266 to +6271 MB, pyadjoint +4430 to +4469 and +9244 to +9277 MB on 32 x 16 and 64 x 32). The time
@@ -108,7 +109,7 @@ From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md)) and a
   (Optimistix, studies/newton_heldout), both routes agree with the converged gradient to 6.1e-9 at 1e-4 and 8.4e-5
   at 1e-2.
 
-Separately, repro/sciml_checkpoint_resolve.jl shows that SciMLSensitivity's checkpointed InterpolatingAdjoint
+Separately, repro/sciml_checkpoint_resolve.jl (output in repro/output/) shows that SciMLSensitivity's checkpointed InterpolatingAdjoint
 re-solves each checkpoint interval adaptively, ignoring a fixed dt, so its error has a floor set by the re-solve's
 tolerances (the adjoint defaults, abstol = 1e-6 and reltol = 1e-3) rather than by the step. With one checkpoint
 interval (saveat = [T], so the only checkpoints are the start and the end) the error stalls at the defaults (1.5,

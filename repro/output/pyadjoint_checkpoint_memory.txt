@@ -1,0 +1,13 @@
+# repro/pyadjoint_checkpoint_memory.py, firedrakeproject/firedrake-vanilla-default:latest, 2026-11-21
+tape, 32 x 16, 1000 steps: peak +44.2 MB, 3 s, 3002 blocks, 3005 variables of which 2004 hold a state and 2002 an adjoint value, dJ = -2.705075649851e-01
+tape, 32 x 16, 4000 steps: peak +178.2 MB, 10 s, 12002 blocks, 12005 variables of which 8004 hold a state and 8002 an adjoint value, dJ = -2.705075665090e-01
+checkpoint, 32 x 16, 1000 steps: peak +21.5 MB, 5 s, 3002 blocks, 3005 variables of which 3 hold a state and 1 an adjoint value, dJ = -2.705075649851e-01
+checkpoint, 32 x 16, 4000 steps: peak +40.8 MB, 19 s, 12002 blocks, 12005 variables of which 3 hold a state and 1 an adjoint value, dJ = -2.705075665090e-01
+checkpoint-gc, 32 x 16, 1000 steps: peak +5.6 MB, 7 s, 3002 blocks, 3005 variables of which 3 hold a state and 1 an adjoint value, dJ = -2.705075649851e-01
+checkpoint-gc, 32 x 16, 4000 steps: peak +21.2 MB, 30 s, 12002 blocks, 12005 variables of which 3 hold a state and 1 an adjoint value, dJ = -2.705075665090e-01
+tape, 128 x 64, 1000 steps: peak +280.1 MB, 4 s, 3002 blocks, 3005 variables of which 2004 hold a state and 2002 an adjoint value, dJ = -2.706603343293e-01
+tape, 128 x 64, 4000 steps: peak +1130.1 MB, 17 s, 12002 blocks, 12005 variables of which 8004 hold a state and 8002 an adjoint value, dJ = -2.706603740312e-01
+checkpoint, 128 x 64, 1000 steps: peak +110.8 MB, 8 s, 3002 blocks, 3005 variables of which 3 hold a state and 1 an adjoint value, dJ = -2.706603343293e-01
+checkpoint, 128 x 64, 4000 steps: peak +159.0 MB, 33 s, 12002 blocks, 12005 variables of which 3 hold a state and 1 an adjoint value, dJ = -2.706603740312e-01
+checkpoint-gc, 128 x 64, 1000 steps: peak +16.1 MB, 11 s, 3002 blocks, 3005 variables of which 3 hold a state and 1 an adjoint value, dJ = -2.706603343293e-01
+checkpoint-gc, 128 x 64, 4000 steps: peak +33.5 MB, 44 s, 12002 blocks, 12005 variables of which 3 hold a state and 1 an adjoint value, dJ = -2.706603740312e-01
