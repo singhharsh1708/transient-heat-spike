@@ -68,6 +68,8 @@ def mem_cell(d):
         e = str(d.get("error", ""))
         if (need := refused_mb(d)) is not None:
             return f"out of memory: needs {need / 1024:.1f} GB"
+        if "timeout" in e:  # run_case.py: "killed: timeout after N s" is not a memory kill
+            return f"timed out{f' at {pk / 1024:.1f} GB' if pk else ''}"
         why = "killed" if "killed" in e else "failed"
         return f"{why}{f' at {pk / 1024:.1f} GB' if pk else ''}"
     base = d.get("baseline_rss_mb")
