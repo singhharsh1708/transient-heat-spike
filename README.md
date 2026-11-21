@@ -6,10 +6,21 @@ reference; and its follow-on, temperature-dependent conductivity, which should s
 from differentiating unrolled Newton iterations. The issue asks for each idea to be "checked with a quick spike
 before full integration"; this is that check, on CPU, outside mosaic.
 
+**Answer for idea 4.** It separates solvers on memory, not on gradient accuracy: every exact-discrete adjoint (JAX,
+pyadjoint, tape or checkpointed) returns the same gradient to 3e-13, while a full tape grows linearly with the step
+count (+6.1 GB at 1e5 steps on 64 x 32 for JAX) and checkpointing does not, or barely (JAX within about +100 MB;
+pyadjoint's Revolve +0.6 to +1.6 GB, from its tape records and recomputation garbage). Continuous adjoints
+(SciMLSensitivity) are first order in the step, and BacksolveAdjoint fails on diffusion. For #375's CI budget (a few
+minutes per solver call, under about 30 minutes per solver): the memory separation is already clear at 1e4 steps,
+where a call takes seconds (JAX) to minutes (pyadjoint Revolve, 2 to 3 minutes at 64 x 32 in CI); at 1e5 steps a
+single pyadjoint Revolve call on 128 x 64 takes 29 to 31 minutes, so the top of the sweep belongs outside per-PR CI.
+The mosaic integration on a fork (singhharsh1708/mosaic#2) runs its default suite to 1e4 steps in 21 to 26 minutes
+per solver.
+
 ## Problem
 
-Slab [0, 2] x [0, 1], cold left face, other faces insulated, conductivity k0 rho per cell (rho as in mosaic's
-thermal-mesh), initial temperature the single eigenmode sin(pi x / 4). Then T(x, t) = sin(pi x / 4) exp(-lam t),
+Slab [0, 2] x [0, 1], cold left face, other faces insulated, conductivity k0 rho per cell (linear in rho;
+mosaic's thermal-mesh maps rho through SIMP, which the fork integration does), initial temperature the single eigenmode sin(pi x / 4). Then T(x, t) = sin(pi x / 4) exp(-lam t),
 and J = integral of T(t_end)^2 and its derivative along uniform conductivity have closed forms (`spike/problem.py`).
 Every backend uses the same bilinear (Q1) elements, consistent mass and backward Euler with a fixed number of steps
 to t_end, so forward results agree (to 1e-11 or better; OrdinaryDiffEq's drifts to 3.5e-12 at 100000 steps) and
