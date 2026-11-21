@@ -18,7 +18,8 @@ so the calls go through the schema validation and the tesseract-jax VJP path of 
 served backend without Docker. Needs torch and torch-fem (a CPU wheel is enough) and the
 mosaic fork with the torch-fem transient backend (github.com/singhharsh1708/mosaic, branch
 feat/thermal-transient-torch; the archived results come from commit 9ef61ca, the same
-patch as 66f4ce6 after a rebase), installed in the
+patch as 66f4ce6 after a rebase; torch 2.5.1, torch-fem 0.12.1, tesseract-core 1.16.0, tesseract-jax 0.4.0,
+jax 0.10.2, numpy 2.4.4, scipy 1.17.1, Python 3.11), installed in the
 same environment, with ``MOSAIC_CHECKOUT`` pointing at that checkout::
 
     MOSAIC_CHECKOUT=<mosaic checkout> python studies/fd_served/fd_served.py [--fields 30]
@@ -76,7 +77,7 @@ FIELD_SEEDS = range(2000, 2100)  # fresh: not used by the earlier studies
 
 
 def lognormal_rho(seed: int, n_cells: int) -> np.ndarray:
-    """Density 0.5 exp(0.3 z), clipped to [0.05, 0.95] so no cell sits at a clip."""
+    """Density 0.5 exp(0.3 z), clipped to [0.05, 0.95] (14 cells in 13 of fields 2000-2029 sit at 0.95)."""
     z = np.random.default_rng(seed).standard_normal(n_cells)
     return np.clip(0.5 * np.exp(0.3 * z), 0.05, 0.95).astype(np.float32)
 

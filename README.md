@@ -96,9 +96,10 @@ checkpoints at isqrt(steps) times, as in the CI sweep, the effect is small.
 
 ## Studies
 
-Three follow-up studies in [studies/](studies/), each with its criteria written before the run (PREREG.md), its
-data, and a README that separates results against those criteria from checks added after the run. The criteria
-files were committed together with the results, so their order rests on this record, not on a timestamp. The two FD studies use a Jacobi-PCG
+Four follow-up studies in [studies/](studies/). Three have criteria written before the run (PREREG.md), their
+data, and a README that separates results against those criteria from checks added after the run; the criteria
+files were committed together with the results, so their order rests on this record, not on a timestamp. The fourth
+(fd_served) repeats fd_heldout's design through a served backend. The two FD studies use a Jacobi-PCG
 solver written for the study, not any mosaic backend; the Newton study uses Optimistix.
 
 - [studies/fd_heldout](studies/fd_heldout/README.md): a best-step finite-difference gradient check, scored as mosaic
@@ -108,6 +109,10 @@ solver written for the study, not any mosaic backend; the Newton study uses Opti
 - [studies/fd_configured](studies/fd_configured/README.md): the fork's configured 50-step FD workload with the same
   hypothetical CG. No truncated gradient crossed 10 % (endpoint fixed before the run: 0/30; largest 9.1 %), but at 1e-3 the
   check rejected the exact gradient on 20 of 30 fresh fields (observed, not a criterion fixed before the run).
+- [studies/fd_served](studies/fd_served/README.md): the fd_heldout check through the torch-fem transient backend of
+  a mosaic fork PR, with mosaic's own FD functions and status checks: with CG at 1e-3 over one short step it accepted
+  unrolled gradients more than 10 % off on 20 of 30 fresh fields and rejected the exact gradient on all 30; at the
+  backend's default 1e-6 everything passed.
 - [studies/newton_heldout](studies/newton_heldout/README.md): Optimistix Newton stopped at rtol = atol = 1e-4 gives
   gradients within 6.1e-9 by both its default implicit adjoint and by differentiating the iterations (36 cases);
   needs `optimistix==0.1.0`.
