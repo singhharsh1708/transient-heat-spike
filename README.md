@@ -65,11 +65,16 @@ From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md)) and a
 - A full tape grows linearly with the step count: at 1e5 steps JAX needs +1.5 GB on 32 x 16 and +6.1 GB on
   64 x 32 and refuses 128 x 64 up front (it asks for 24.4 GB); pyadjoint needs +4.4 and +9.0 GB and is killed at
   13 GB on 128 x 64.
-- JAX's checkpointing stays within +102 MB on every mesh (1.6-1.8 times the tape's time at 1e5 steps).
-  pyadjoint's Revolve stores no per-step state but still grows (+0.64 to +1.6 GB at 1e5 steps, 2.2-3.3 times the
-  time, default settings): its tape keeps three blocks per step (about 5-6 KB/step on both meshes measured), and
+- JAX's checkpointing stays within about +100 MB on every mesh. pyadjoint's Revolve stores no per-step state but
+  still grows (+0.64 to +1.6 GB at 1e5 steps, default settings): its tape keeps three blocks per step (about 5-6 KB/step on both meshes measured), and
   garbage from the recomputation, which grows with the mesh, waits for the cycle collector; gc_timestep_frequency
   removes the second part at 1.2-2 times the time (repro/pyadjoint_checkpoint_memory.py, docs/log.md).
+- The memory figures reproduce: in six full sweeps of the same code (CI run 1 and five later runs in
+  [results/ci-later](results/ci-later/README.md)), the tape's growth at 1e5 steps varied by under 1 % (JAX +1587 to
+  +1593 and +6266 to +6271 MB, pyadjoint +4430 to +4469 and +9244 to +9277 MB on 32 x 16 and 64 x 32). The time
+  ratios do not: tape and checkpoint run as separate jobs on different runners, and at 1e5 steps checkpointing took
+  0.88 to 2.12 times the tape's time for JAX and 1.19 to 3.24 times for pyadjoint across those runs, so a time
+  comparison needs both strategies in one job.
 - On a T4 GPU a growing JAX tape's device memory is what XLA's memory analysis of the compiled gradient predicts
   (to 1.1 MB; 6254.7 MB against 6254.4 MB at 64 x 32 and 1e5 steps), 128 x 64 at 1e5 steps is refused (it asks for
   24.4 GB, the allocator's limit is 14.6 GB), checkpointing needs at most 94 MB of temporaries by XLA's analysis,

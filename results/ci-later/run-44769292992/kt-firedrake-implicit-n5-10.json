@@ -1,0 +1,1 @@
+{"backend": "firedrake", "problem": "k(T)", "beta": 1.0, "diff": "implicit", "newton": 5, "nx": 16, "ny": 8, "steps": 10, "J": 0.09824332344278494, "dJ_uniform": -0.1960366353701288, "grad_dir": -0.002308882464616493, "ok": true, "exit_status": 0, "process_wall_s": 2.2058023029999845, "sampled_peak_rss_mb": 286.13671875}
