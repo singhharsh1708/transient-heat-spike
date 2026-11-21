@@ -6,6 +6,8 @@ The closed form (see discrete_exact's docstring) is J_h = Ly |f0|_M^2 (1 + dt la
 dJ_h/deps = -2N dt lam1 J_h / (1 + dt lam1). Here every quantity, including the 1D mass matrix product and lam1, is
 evaluated with mpmath at 40 digits, on the meshes and step counts of the CI sweep, and discrete_exact must agree to
 1e-15 relative.
+It also checks, independently of the formula, that the initial mode is an eigenvector of the 1D pencil with that
+eigenvalue (residual below 1e-35 relative).
 """
 
 import sys
@@ -32,6 +34,21 @@ for nx, ny in ((32, 16), (64, 32), (128, 64)):
         fmf += h / 6 * (2 * a * a + 2 * a * b + 2 * b * b)
     th = mp.pi / (2 * nx)
     lam1 = 6 * k0 / h**2 * (1 - mp.cos(th)) / (2 + mp.cos(th))
+    # The closed form rests on f being an exact eigenvector of the 1D pencil k0 Kx f = lam1 Mx f (P1 elements, x = 0
+    # removed, x = Lx free); check that independently of the formula, at 40 digits.
+    res, scale = mp.mpf(0), mp.mpf(0)
+    for i in range(nx):
+        left = f[i - 1] if i > 0 else mp.mpf(0)
+        right = f[i + 1] if i + 1 < nx else None
+        if right is None:  # last node: one element
+            kf = k0 / h * (f[i] - left)
+            mf = h / 6 * (2 * f[i] + left)
+        else:
+            kf = k0 / h * (2 * f[i] - left - right)
+            mf = h / 6 * (4 * f[i] + left + right)
+        res = max(res, abs(kf - lam1 * mf))
+        scale = max(scale, abs(kf))
+    assert res / scale < mp.mpf(10) ** -35, (nx, res / scale)
     for steps in (10, 100, 1000, 10000, 100000):
         a = t_end / steps * lam1
         J = Ly * fmf * (1 + a) ** (-2 * steps)
@@ -40,5 +57,5 @@ for nx, ny in ((32, 16), (64, 32), (128, 64)):
         err = max(abs((mp.mpf(J64) - J) / J), abs((mp.mpf(dJ64) - dJ) / dJ))
         worst = max(worst, float(err))
         print(f"{nx}x{ny} {steps:>6} steps: J {mp.nstr(J, 20)}  dJ {mp.nstr(dJ, 20)}  rel diff {float(err):.1e}")
-print(f"worst relative difference {worst:.1e}")
+print(f"worst relative difference {worst:.1e}; eigenvector residuals below 1e-35 relative")
 assert worst < 1e-15
