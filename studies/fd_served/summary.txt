@@ -1,0 +1,16 @@
+30 lognormal density fields (seeds 2000..2029), nx=8, mosaic fd_check eps [0.1, 0.01, 0.001, 0.0001], 6 directions, status checks of gradient/fd_check (peer check inactive).
+
+| workload | cg_rtol | gradient | E min..max | E > 10% | E > 1% | FD passes | passes with E > 10% | fails with E < 1% |
+|---|---|---|---|---|---|---|---|---|
+| short_1step | 0.001 | implicit | 0.0025..0.013 | 0/30 | 3/30 | 0/30 | 0/30 | 27/30 |
+| short_1step | 0.001 | unrolled | 0.055..0.32 | 21/30 | 30/30 | 29/30 | 20/30 | 0/30 |
+| short_1step | 0.001 | exact | 0..0 | 0/30 | 0/30 | 0/30 | 0/30 | 30/30 |
+| short_1step | 1e-06 | implicit | 1.2e-06..1.2e-05 | 0/30 | 0/30 | 30/30 | 0/30 | 0/30 |
+| short_1step | 1e-06 | unrolled | 5.7e-05..0.0016 | 0/30 | 0/30 | 30/30 | 0/30 | 0/30 |
+| short_1step | 1e-06 | exact | 0..0 | 0/30 | 0/30 | 30/30 | 0/30 | 0/30 |
+| fd_check_50step | 0.001 | implicit | 0.0016..0.012 | 0/30 | 1/30 | 24/30 | 0/30 | 5/30 |
+| fd_check_50step | 0.001 | unrolled | 0.0024..0.019 | 0/30 | 4/30 | 30/30 | 0/30 | 0/30 |
+| fd_check_50step | 0.001 | exact | 0..0 | 0/30 | 0/30 | 24/30 | 0/30 | 6/30 |
+| fd_check_50step | 1e-06 | implicit | 5.9e-07..8.8e-06 | 0/30 | 0/30 | 30/30 | 0/30 | 0/30 |
+| fd_check_50step | 1e-06 | unrolled | 1.5e-06..0.0001 | 0/30 | 0/30 | 30/30 | 0/30 | 0/30 |
+| fd_check_50step | 1e-06 | exact | 0..0 | 0/30 | 0/30 | 30/30 | 0/30 | 0/30 |
