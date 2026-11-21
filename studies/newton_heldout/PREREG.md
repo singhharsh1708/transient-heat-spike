@@ -1,5 +1,8 @@
 # Held-out Newton study: criteria fixed before the run (2026-11-21)
 
+These criteria were written before the run but committed together with its results (commit b932232), so the
+order rests on this statement, not on a timestamp.
+
 Question: at the tolerances people use (Optimistix Newton, rtol = atol in {1e-2, 1e-4, 1e-8}), are per-step Newton
 gradients from Optimistix's default ImplicitAdjoint and from differentiating the iterations
 (RecursiveCheckpointAdjoint) accurate on inputs not used before?

@@ -1,6 +1,6 @@
 # Held-out Newton study: tolerance-stopped Newton gives accurate gradients either way (2026-11-21)
 
-Criteria in PREREG.md (fixed before the run). From studies/newton_heldout, `python -B sweep.py > results.csv` with the `studies` extra (optimistix==0.1.0) installed
+Criteria in PREREG.md (written before the run, committed with the results). From studies/newton_heldout, `python -B sweep.py > results.csv` with the `studies` extra (optimistix==0.1.0) installed
 (about 90 s). 216 runs: meshes 12x6 and 20x10, three held-out lognormal rho fields, three
 conductivity laws (1+T, exp T, 1+2T^2), 10 and 100 steps, rtol = atol in {1e-2, 1e-4, 1e-8}, Optimistix's default
 ImplicitAdjoint and RecursiveCheckpointAdjoint (differentiating the iterations). All solves converged. The reference

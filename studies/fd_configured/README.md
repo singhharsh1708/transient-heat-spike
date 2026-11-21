@@ -1,6 +1,6 @@
 # The fork's configured FD experiment: endpoint not reached; correct gradients still rejected at 1e-3 (2026-11-21)
 
-Criteria in PREREG.md, fixed before the run. `python -B run.py` (about 55 s)
+Criteria in PREREG.md, written before the run (committed with the results). `python -B run.py` (about 55 s)
 writes results.csv. 30 fresh density fields (seeds 1000-1029) plus the configured seed 0, the fork's 8x4 slab, SIMP
 conductivity, eigenmode start, 50 steps to t_end, J = sum of nodal T^2, mosaic's FD grid and absolute checks.
 

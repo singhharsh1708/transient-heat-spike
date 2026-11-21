@@ -1,5 +1,8 @@
 # Held-out FD check study: criteria fixed before the run (2026-11-21)
 
+These criteria were written before the run but committed together with its results (commit b932232), so the
+order rests on this statement, not on a timestamp.
+
 Question: does mosaic's best-step FD check (six random unit directions, central differences at
 eps * rms(input), eps in {1e-1, 1e-2, 1e-3, 1e-4}; pass when at one eps the median symmetric relative error over
 directions is <= 1% and the cosine is >= 0.99) pass a gradient that is more than 10% wrong, on inputs that were not
