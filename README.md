@@ -100,7 +100,7 @@ From CI run 1 ([results/ci-run-1/summary.md](results/ci-run-1/summary.md)) and a
   matches its closed form to 1.1e-12 of the largest (spike/check_full_gradient.py); SciMLSensitivity's continuous adjoints
   are O(dt) off (1e-5 to 2e-5 at 1e5 steps), and BacksolveAdjoint is 89-100 % off, except at 1e5 steps on 32 x 16,
   where it reaches 5.3e289.
-- k(T): with one Newton iteration per step, unrolled differentiation is 7-22 times closer to the converged gradient
+- k(T): with one Newton iteration per step, unrolled differentiation is 7 to 22.5 times closer to the converged gradient
   than implicit differentiation, along one random direction (the ratio depends on the direction); from three iterations both agree with it to 2.1e-14 or better.
   Firedrake (pyadjoint: hand-written Newton on the tape against a NonlinearVariationalSolver) gives the same J and
   gradients to 1e-14 ([results/kt-firedrake-local](results/kt-firedrake-local/README.md)); at two iterations which

@@ -120,8 +120,8 @@
     (spike/check_full_gradient.py). The mode does not depend on y, so this checks the x-dependence of the gradient:
     cells in one column have equal shares, and an error that permuted cells within a column would pass.
   - BacksolveAdjoint is silent: at 1000 and 1e5 steps on 32 x 16 the process exits 0 with nothing on stderr (no
-    warning, no error; the harness's ok flag means no exception), while its gradient is 99 % off and -1.2e287 (CI
-    run 1 had 5.3e289 for the same case).
+    warning, no error; the harness's ok flag means no exception), while its gradient is 99 % off and, at 1e5 steps, a value of
+    -1.2e287 (CI run 1 recorded a relative error of 5.3e289 for the same case).
   - JAX checkpointing keeps steps / c + c states with c the largest divisor of steps not above isqrt(steps); for a
     prime step count c = 1 and it keeps every step. The sweep's step counts all have a divisor near the square root.
   - The k(T) ratios are along one random direction; along uniform conductivity they differ (see above).
